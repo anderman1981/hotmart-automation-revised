@@ -36,3 +36,14 @@ This document serves as an automated historical registry of all significant acti
 | 2026-01-21 05:29 | INGESTION | File Ingested | Processed: assets_agent.json (6903 chars) | GitAgent |
 | 2026-01-21 05:30 | INGESTION | File Ingested | Processed: git_agent.json (7958 chars) | GitAgent |
 | 2026-01-21 05:32 | INGESTION | File Ingested | Processed: learning_agent.json (9932 chars) | GitAgent |
+| 2026-01-21 05:42 | RELEASE | v1.2.0 Stable | Manager Agent knowledge summarization + full docs | GitAgent |
+
+---
+
+## 🐛 Known Issues (v1.2.0)
+
+| Issue ID | Descripción | Prioridad | Estado |
+|----------|-------------|-----------|--------|
+| #20 | Save Knowledge button fails in legacy Agents page (hardcoded port) | Media | Open |
+| N/A | API Keys stored in plain text (encryption pending) | Alta | Backlog |
+| N/A | RAG implementation incomplete (ChromaDB integration pending) | Media | Backlog |
