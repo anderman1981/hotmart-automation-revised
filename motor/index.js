@@ -540,6 +540,56 @@ app.post('/api/agents/manager/task', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// Products: Batch move to freezer
+app.post('/api/products/move-to-freezer', async (req, res) => {
+    const { productIds } = req.body;
+    try {
+        await pool.query(
+            `UPDATE products 
+             SET status = 'cold', 
+                 cold_moved_at = NOW(),
+                 cold_move_reason = 'Manual batch move to freezer'
+             WHERE id = ANY($1)`,
+            [productIds]
+        );
+        
+        gitAgent.updateWiki('PRODUCTS', 'Batch Move to Freezer', `${productIds.length} products moved to freezer`);
+        
+        res.json({ 
+            status: 'success', 
+            message: `${productIds.length} productos movidos al freezer`,
+            movedCount: productIds.length 
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Products: Batch reactivate
+app.post('/api/products/reactivate', async (req, res) => {
+    const { productIds } = req.body;
+    try {
+        await pool.query(
+            `UPDATE products 
+             SET status = 'testing', 
+                 reactivated_at = NOW(),
+                 cold_move_reason = NULL
+             WHERE id = ANY($1)`,
+            [productIds]
+        );
+        
+        gitAgent.updateWiki('PRODUCTS', 'Batch Reactivation', `${productIds.length} products reactivated from freezer`);
+        
+        res.json({ 
+            status: 'success', 
+            message: `${productIds.length} productos reactivados`,
+            reactivatedCount: productIds.length 
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // Trigger Learning Research
 app.post('/api/agents/learning/research', async (req, res) => {
     const { topic, sourceUrl } = req.body;
