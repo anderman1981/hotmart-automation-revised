@@ -7,6 +7,67 @@ const Products = () => {
     const [selectedProducts, setSelectedProducts] = useState(new Set());
     const [activeView, setActiveView] = useState('active'); // 'active', 'freezer', 'all'
 
+    // Helper functions - MOVED BEFORE JSX
+    const toggleProductSelection = (productId) => {
+        const newSelection = new Set(selectedProducts);
+        if (newSelection.has(productId)) {
+            newSelection.delete(productId);
+        } else {
+            newSelection.add(productId);
+        }
+        setSelectedProducts(newSelection);
+    };
+
+    const moveToFreezer = async () => {
+        try {
+            const productIds = Array.from(selectedProducts);
+            
+            // Call API to move products to freezer
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/move-to-freezer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productIds })
+            });
+            
+            if (response.ok) {
+                // Update local state
+                setProducts(products.map(p => 
+                    productIds.includes(p.id) 
+                        ? { ...p, status: 'cold', cold_moved_at: new Date().toISOString() }
+                        : p
+                ));
+                setSelectedProducts(new Set());
+            }
+        } catch (error) {
+            console.error('Error moving products to freezer:', error);
+        }
+    };
+
+    const reactivateProducts = async () => {
+        try {
+            const productIds = Array.from(selectedProducts);
+            
+            // Call API to reactivate products
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/reactivate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productIds })
+            });
+            
+            if (response.ok) {
+                // Update local state
+                setProducts(products.map(p => 
+                    productIds.includes(p.id) 
+                        ? { ...p, status: 'testing', reactivated_at: new Date().toISOString() }
+                        : p
+                ));
+                setSelectedProducts(new Set());
+            }
+        } catch (error) {
+            console.error('Error reactivating products:', error);
+        }
+    };
+
     useEffect(() => {
         // Fetch products
         fetch(import.meta.env.VITE_API_URL + '/api/products')
@@ -177,67 +238,6 @@ const Products = () => {
             )}
         </div>
     );
-
-    // Helper functions
-    const toggleProductSelection = (productId) => {
-        const newSelection = new Set(selectedProducts);
-        if (newSelection.has(productId)) {
-            newSelection.delete(productId);
-        } else {
-            newSelection.add(productId);
-        }
-        setSelectedProducts(newSelection);
-    };
-
-    const moveToFreezer = async () => {
-        try {
-            const productIds = Array.from(selectedProducts);
-            
-            // Call API to move products to freezer
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/move-to-freezer`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productIds })
-            });
-            
-            if (response.ok) {
-                // Update local state
-                setProducts(products.map(p => 
-                    productIds.includes(p.id) 
-                        ? { ...p, status: 'cold', cold_moved_at: new Date().toISOString() }
-                        : p
-                ));
-                setSelectedProducts(new Set());
-            }
-        } catch (error) {
-            console.error('Error moving products to freezer:', error);
-        }
-    };
-
-    const reactivateProducts = async () => {
-        try {
-            const productIds = Array.from(selectedProducts);
-            
-            // Call API to reactivate products
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/reactivate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productIds })
-            });
-            
-            if (response.ok) {
-                // Update local state
-                setProducts(products.map(p => 
-                    productIds.includes(p.id) 
-                        ? { ...p, status: 'testing', reactivated_at: new Date().toISOString() }
-                        : p
-                ));
-                setSelectedProducts(new Set());
-            }
-        } catch (error) {
-            console.error('Error reactivating products:', error);
-        }
-    };
 };
 
 export default Products;
