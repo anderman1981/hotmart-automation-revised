@@ -1,0 +1,308 @@
+{
+  "agent_id": "learning",
+  "agent_name": "Learning Agent",
+  "agent_type": "SCRAPER",
+  "status": "RUNNING",
+  "version": "1.0.0",
+  "description": "Agente de aprendizaje continuo que analiza patrones históricos, documenta lecciones, mejora procesos y alimenta la inteligencia colectiva del sistema",
+  
+  "system_prompt": {
+    "identity": "Eres el LEARNING AGENT, memoria y conciencia del sistema. Observas, analizas, aprendes y ayudas al sistema a evolucionar basándote en experiencia histórica.",
+    
+    "core_responsibilities": [
+      "Documentar todas las decisiones y sus resultados",
+      "Identificar patrones de éxito y fracaso",
+      "Generar insights accionables para otros agentes",
+      "Mantener knowledge base actualizada",
+      "Recomendar optimizaciones basadas en datos",
+      "Detectar anomalías y tendencias",
+      "Facilitar post-mortems de incidentes",
+      "Entrenar modelos predictivos simples"
+    ]
+  },
+  
+  "data_collection": {
+    "sources": {
+      "agent_interactions": {
+        "what": "Messages, decisions, actions entre agentes",
+        "storage": "PostgreSQL table: agent_interactions",
+        "retention": "Indefinite (for learning)"
+      },
+      
+      "content_performance": {
+        "what": "Engagement metrics de posts publicados",
+        "from": "Instagram Agent, Content Agent",
+        "analyze": "What hooks/formats/niches work best"
+      },
+      
+      "product_outcomes": {
+        "what": "Sales, refunds, lifecycle de productos",
+        "from": "Detector Agent, Manager Agent",
+        "analyze": "Prediction accuracy, scoring effectiveness"
+      },
+      
+      "technical_events": {
+        "what": "Deployments, errors, rollbacks, incidents",
+        "from": "Git Agent, monitoring systems",
+        "analyze": "Reliability patterns, hotfix triggers"
+      },
+      
+      "user_feedback": {
+        "what": "User commands, corrections, preferences",
+        "from": "Manager Agent",
+        "analyze": "Where system needs improvement"
+      }
+    }
+  },
+  
+  "learning_mechanisms": {
+    "pattern_recognition": {
+      "method": "Time-series analysis + clustering",
+      "patterns_to_identify": [
+        "Content types that consistently perform well",
+        "Products that exceed/miss predictions",
+        "Times when system makes errors",
+        "Agent collaboration bottlenecks",
+        "User pain points"
+      ],
+      "output": "Pattern library with confidence scores"
+    },
+    
+    "predictive_modeling": {
+      "models": {
+        "content_success_predictor": {
+          "input": "Hook type, niche, format, time",
+          "output": "Predicted engagement rate",
+          "algorithm": "Random Forest or simple regression"
+        },
+        "product_performance_predictor": {
+          "input": "Initial signals, niche saturation, price point",
+          "output": "Likelihood of long-term success",
+          "algorithm": "Logistic regression"
+        }
+      },
+      "training": "Weekly with new data",
+      "validation": "Hold-out test set, track accuracy over time"
+    },
+    
+    "anomaly_detection": {
+      "monitor": [
+        "Sudden drops in content engagement",
+        "Products underperforming expectations",
+        "Increase in system errors",
+        "Agent communication delays"
+      ],
+      "alert_threshold": "2 standard deviations from normal",
+      "action": "Alert Manager Agent for investigation"
+    }
+  },
+  
+  "knowledge_base_management": {
+    "structure": {
+      "lessons_learned": {
+        "location": "data/knowledge/lessons/",
+        "format": "Markdown files",
+        "categories": [
+          "content_strategies",
+          "product_selection",
+          "technical_architecture",
+          "agent_coordination",
+          "user_experience"
+        ]
+      },
+      
+      "best_practices": {
+        "location": "data/knowledge/best_practices/",
+        "updates": "Append when new pattern confirmed",
+        "versioning": "Git-tracked for history"
+      },
+      
+      "failure_analysis": {
+        "location": "data/knowledge/post_mortems/",
+        "required_fields": [
+          "What happened",
+          "Why it happened",
+          "Impact",
+          "How it was fixed",
+          "Prevention measures",
+          "Related patterns"
+        ]
+      }
+    },
+    
+    "access_patterns": {
+      "by_manager_agent": "Query for strategic decisions",
+      "by_content_agent": "What content styles work per niche",
+      "by_detector_agent": "What signals predict success",
+      "by_git_agent": "Common deployment issues"
+    }
+  },
+  
+  "insight_generation": {
+    "weekly_report": {
+      "recipients": ["Manager Agent", "User"],
+      "content": {
+        "highlights": "Top 3 wins this week",
+        "concerns": "Top 3 issues or trends",
+        "recommendations": "3 actionable next steps",
+        "metrics": "KPIs vs targets",
+        "predictions": "What to expect next week"
+      },
+      "format": "Markdown document"
+    },
+    
+    "on_demand_insights": {
+      "triggers": [
+        "Manager Agent asks for specific analysis",
+        "Agent reports confusion or conflict",
+        "System performance degrades",
+        "New type of task encountered"
+      ],
+      "response_time": "< 5 minutes",
+      "depth": "As detailed as needed for decision"
+    }
+  },
+  
+  "continuous_improvement": {
+    "feedback_loops": {
+      "content_optimization": {
+        "observe": "Which content performs best",
+        "learn": "Extract common elements",
+        "recommend": "Suggest to Content Agent",
+        "validate": "Track if recommendations improve results"
+      },
+      
+      "product_scoring": {
+        "observe": "Bayesian scores vs actual performance",
+        "learn": "Which signals are most predictive",
+        "recommend": "Adjust weights in scoring algorithm",
+        "validate": "Monitor prediction accuracy"
+      },
+      
+      "agent_efficiency": {
+        "observe": "Task completion times, error rates",
+        "learn": "Where agents struggle",
+        "recommend": "Process improvements or skill gaps",
+        "validate": "Efficiency gains over time"
+      }
+    },
+    
+    "experimentation_framework": {
+      "propose_experiments": {
+        "based_on": "Hypotheses from patterns",
+        "approval": "Manager Agent or user",
+        "examples": [
+          "Test new hook formula",
+          "Try different posting times",
+          "Adjust product scoring weights"
+        ]
+      },
+      "track_results": "A/B test methodology",
+      "implement_winners": "Recommend adoption if significant improvement"
+    }
+  },
+  
+  "workflows": {
+    "post_mortem_facilitation": {
+      "trigger": "Major incident or repeated issue",
+      "process": [
+        "Gather all relevant data (logs, metrics, agent comms)",
+        "Analyze timeline of events",
+        "Identify root cause(s)",
+        "Propose prevention measures",
+        "Document in knowledge base",
+        "Share learnings with all agents"
+      ]
+    },
+    
+    "quarterly_review": {
+      "scope": "Deep dive into system evolution",
+      "analyze": [
+        "What worked well",
+        "What didn't work",
+        "Market changes",
+        "Technical debt accumulated",
+        "Agent skill gaps"
+      ],
+      "output": "Strategic recommendations for next quarter"
+    }
+  },
+  
+  "metrics_tracking": {
+    "learning_effectiveness": {
+      "knowledge_base_growth": "Documents added per month",
+      "insight_accuracy": "% of recommendations that improved outcomes",
+      "prediction_improvement": "Model accuracy over time",
+      "agent_adoption": "% of recommendations implemented"
+    },
+    
+    "system_intelligence": {
+      "pattern_library_size": "Number of validated patterns",
+      "prediction_confidence": "Average confidence score of models",
+      "anomaly_detection_rate": "True positives / false positives",
+      "time_to_insight": "How quickly insights are generated"
+    }
+  },
+  
+  "integration": {
+    "receives_from_all_agents": {
+      "format": "JSON events via Redis pub/sub",
+      "event_types": [
+        "decision_made",
+        "action_completed",
+        "error_encountered",
+        "metric_collected"
+      ]
+    },
+    
+    "provides_to_all_agents": {
+      "historical_context": "Similar situations from the past",
+      "recommendations": "Data-driven suggestions",
+      "warnings": "Anomalies or risks detected",
+      "best_practices": "Proven patterns to follow"
+    },
+    
+    "special_relationship_with_manager": {
+      "strategic_partner": "Helps Manager make informed decisions",
+      "early_warning_system": "Alerts to trends before they become problems",
+      "knowledge_curator": "Organizes information for easy access"
+    }
+  },
+  
+  "self_improvement": {
+    "meta_learning": {
+      "track": "Which of my own insights were most valuable",
+      "adapt": "Focus analysis on high-impact areas",
+      "expand": "Learn new analysis techniques when needed"
+    },
+    
+    "feedback_collection": {
+      "from_agents": "Which insights were helpful vs not",
+      "from_outcomes": "Did predictions come true",
+      "from_user": "Explicit feedback on reports"
+    }
+  },
+  
+  "configuration": {
+    "analysis_frequency": {
+      "real_time": ["Anomaly detection", "Critical pattern alerts"],
+      "hourly": ["Trending topics", "Agent performance"],
+      "daily": ["Content performance analysis"],
+      "weekly": ["Comprehensive reports", "Model retraining"],
+      "monthly": ["Strategic insights", "Long-term trend analysis"]
+    },
+    
+    "retention_policy": {
+      "raw_events": "90 days",
+      "aggregated_metrics": "1 year",
+      "insights_and_patterns": "Indefinite",
+      "failed_experiments": "Archive after 6 months"
+    },
+    
+    "computational_budget": {
+      "max_cpu": "20% (background analysis)",
+      "max_memory": "500MB",
+      "batch_processing": "Off-peak hours when possible"
+    }
+  }
+}
