@@ -80,6 +80,18 @@ class GitAgent {
              return { status: 'error', msg: e.message };
         }
     }
+    async getStatus() {
+        try {
+            const status = await this.git.status();
+            return { 
+                current: status.current,
+                isClean: status.isClean(),
+                totalChanges: status.files.length
+            };
+        } catch (e) {
+            return { current: 'unknown', error: e.message };
+        }
+    }
 }
 
 export default new GitAgent();

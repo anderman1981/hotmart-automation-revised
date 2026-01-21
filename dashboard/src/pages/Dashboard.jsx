@@ -31,11 +31,15 @@ const handleSystemToggle = async () => {
 
 const handleGlobalScan = async () => {
     setLoadingScan(true);
-    toast.info('Initiating Global Scan...');
+    toast.info('Initiating Deep Global Scan...');
     try {
-        const res = await fetch(import.meta.env.VITE_API_URL + '/api/agents/detector/start', { method: 'POST' });
+        const res = await fetch(import.meta.env.VITE_API_URL + '/api/agents/detector/start', {
+            method: 'POST',
+            body: JSON.stringify({ deep: true }),
+            headers: { 'Content-Type': 'application/json' }
+        });
         const data = await res.json();
-        toast.success(data.msg);
+        toast.success(data.msg || 'Scan started successfully');
     } catch (error) {
         toast.error('Error starting scan: ' + error.message);
     } finally {
@@ -49,13 +53,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Mock Data for Charts
 const data = [
-    { name: 'Lun', sales: 400, visits: 240 },
-    { name: 'Mar', sales: 300, visits: 139 },
-    { name: 'Mie', sales: 200, visits: 980 },
-    { name: 'Jue', sales: 278, visits: 390 },
-    { name: 'Vie', sales: 189, visits: 480 },
-    { name: 'Sab', sales: 239, visits: 380 },
-    { name: 'Dom', sales: 349, visits: 430 },
+    { name: 'Mon', sales: 400, visits: 240 },
+    { name: 'Tue', sales: 300, visits: 139 },
+    { name: 'Wed', sales: 200, visits: 980 },
+    { name: 'Thu', sales: 278, visits: 390 },
+    { name: 'Fri', sales: 189, visits: 480 },
+    { name: 'Sat', sales: 239, visits: 380 },
+    { name: 'Sun', sales: 349, visits: 430 },
 ];
 
 const activityData = [
@@ -74,7 +78,7 @@ const logs = [
 const Dashboard = () => {
     const [status, setStatus] = useState('Checking...');
     const [ping, setPing] = useState(0);
-    const [stats, setStats] = useState({ products: 0, sales: 0, content_generated: 0, active_agents: 0 });
+    const [stats, setStats] = useState({ products: 0, sales: 0, content_generated: 0, active_agents: 0, new_products: 3 });
     const [learningStats, setLearningStats] = useState({ logs: [], mastery: 0, total_topics: 0 });
     const [loadingScan, setLoadingScan] = useState(false);
     const [systemOn, setSystemOn] = useState(false);
@@ -196,10 +200,10 @@ const Dashboard = () => {
 
             {/* Top KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatsCard title="Ganancia Estimada" value={`$${(stats.sales || 0).toLocaleString()}`} icon={DollarSign} trend={12} color="orange" delay={0} />
-                <StatsCard title="Productos Rastreados" value={stats.products || 0} icon={Package} trend={5} color="blue" delay={100} />
-                <StatsCard title="Contenido Generado" value={stats.content_generated || 0} icon={FileText} trend={24} color="purple" delay={200} />
-                <StatsCard title="Agentes Trabajando" value={`${stats.active_agents || 0} / 7`} icon={Users} color="emerald" delay={300} />
+                <StatsCard title="Estimated Earnings" value={`$${(stats.sales || 0).toLocaleString()}`} icon={DollarSign} trend={12} color="orange" delay={0} />
+                <StatsCard title="Tracked Products" value={stats.products || 0} icon={Package} trend={stats.new_products || 5} trendSuffix=" new" trendLabel="vs last scan" color="blue" delay={100} />
+                <StatsCard title="Generated Content" value={stats.content_generated || 0} icon={FileText} trend={24} color="purple" delay={200} />
+                <StatsCard title="Active Agents" value={`${stats.active_agents || 0} / 7`} icon={Users} color="emerald" delay={300} />
             </div>
 
             {/* Main Visuals Grid */}
@@ -218,13 +222,13 @@ const Dashboard = () => {
                                     <BookOpen className="text-blue-400" size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-bold text-white">Centro de Aprendizaje</h2>
+                                    <h2 className="text-lg font-bold text-white">Learning Center</h2>
                                     <p className="text-zinc-400 text-xs">Learning Agent Knowledge Base</p>
                                 </div>
                             </div>
                             <div className="text-right">
                                 <span className="text-2xl font-bold text-blue-400">{learningStats.mastery}%</span>
-                                <p className="text-zinc-500 text-[10px] uppercase tracking-wider">Maestría</p>
+                                <p className="text-zinc-500 text-[10px] uppercase tracking-wider">Mastery</p>
                             </div>
                         </div>
 
@@ -238,9 +242,9 @@ const Dashboard = () => {
 
                         {/* Recent Logs Feed */}
                         <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Actividad Reciente</h3>
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Recent Thinking</h3>
                             {(!learningStats.logs || learningStats.logs.length === 0) ? (
-                                <p className="text-zinc-600 text-sm italic">Esperando primera sesión de aprendizaje...</p>
+                                <p className="text-zinc-600 text-sm italic">Waiting for first learning session...</p>
                             ) : (
                                 learningStats.logs.map((log) => (
                                     <div key={log.id} className="bg-zinc-800/30 p-3 rounded-lg border border-zinc-700/30 flex justify-between items-center hover:bg-zinc-800/50 transition-colors">
@@ -275,7 +279,7 @@ const Dashboard = () => {
                         <div className="flex justify-between items-center mb-6">
                             <div>
                                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Activity size={18} className="text-orange-500" /> Rendimiento de Ventas
+                                    <Activity size={18} className="text-orange-500" /> Sales Performance
                                 </h3>
                                 <p className="text-sm text-zinc-500">Revenue stream vs traffic analysis</p>
                             </div>
@@ -345,24 +349,33 @@ const Dashboard = () => {
                             </h3>
                             <button className="text-xs text-orange-500 hover:text-orange-400">View All</button>
                         </div>
-                        <div className="p-4 space-y-4 overflow-y-auto max-h-[300px] scrollbar-hide">
+                        <div className="p-4 space-y-2 overflow-y-auto max-h-[300px] scrollbar-hide">
                             <AnimatePresence>
                                 {logs.map((log) => (
                                     <motion.div
                                         key={log.id}
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        className="flex gap-3 items-start group"
+                                        whileHover={{ scale: 1.02 }}
+                                        className="flex gap-3 items-start p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all"
                                     >
-                                        <div className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${log.type === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                                        <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${log.type === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
                                             log.type === 'warning' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
-                                                'bg-blue-500'
+                                                log.type === 'error' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
+                                                    'bg-blue-500'
                                             }`} />
-                                        <div>
-                                            <p className="text-sm text-zinc-300 group-hover:text-white transition-colors leading-tight">
-                                                {log.msg}
-                                            </p>
-                                            <p className="text-[10px] text-zinc-600 mt-1 font-mono">{log.time}</p>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start">
+                                                <p className="text-sm text-zinc-300 group-hover:text-white transition-colors leading-tight font-medium">
+                                                    {log.msg}
+                                                </p>
+                                                <span className="text-[10px] text-zinc-600 font-mono whitespace-nowrap ml-2">{log.time}</span>
+                                            </div>
+                                            <div className="flex gap-2 mt-1">
+                                                <span className="text-[9px] uppercase tracking-wider text-zinc-500 bg-zinc-900/50 px-1.5 rounded border border-zinc-800">
+                                                    {log.type}
+                                                </span>
+                                            </div>
                                         </div>
                                     </motion.div>
                                 ))}

@@ -301,6 +301,16 @@ app.post('/api/agents/git/commit', async (req, res) => {
     }
 });
 
+// Get Git Status (Current Branch)
+app.get('/api/git/status', async (req, res) => {
+    try {
+        const status = await gitAgent.getStatus();
+        res.json(status);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 import managerAgent from './src/agents/ManagerAgent.js';
 
 // ...
