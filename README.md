@@ -1,60 +1,3 @@
-<<<<<<< HEAD
-# Hotmart Automation Ecosystem (Antigravity) 🚀
-
-## 📋 Project Overview
-This project is an automated ecosystem designed to discover, analyze, and affiliate with high-potential products on Hotmart, manage social media marketing strategies, and orchestrate sales funnels using autonomous AI agents.
-
-## 🏗 System Architecture
-
-### 1. **Core Engine (Motor)**
-*   **Tech:** Node.js, Express, Puppeteer (Headless Browser), LangChain/Ollama.
-*   **Role:** The "Brain". Orchestrates all agents, handles database connections, and exposes APIs.
-*   **Agents:**
-    *   `DetectorAgent`: Scans Hotmart market, inspects product details, and attempts affiliation.
-    *   `InstagramAgent`: Manages social media interactions (login, posts, likes).
-    *   `ContentAgent`: Generates marketing copy and image prompts using local LLMs (TinyLlama).
-    *   `AssetsAgent`: Extracts visual assets (images) and hidden Drive/Dropbox links from sales pages.
-
-### 2. **Dashboard (Frontend)**
-*   **Tech:** React (Vite), TailwindCSS v4, Recharts, Framer Motion.
-*   **Role:** The "Command Center". Visual interface to monitor agents, view found products, and trigger manual tasks.
-*   **Port:** `4004`
-
-### 3. **Infrastructure**
-*   **Docker Compose:** Manages all services (Motor, Dashboard, Postgres, Redis, N8N, Ollama).
-*   **Database:** PostgreSQL (Product data, Analytics).
-*   **Queue:** Redis (Task scheduling).
-*   **Automation:** N8N (Workflow orchestration).
-
-## 🛠 Setup & Installation
-
-1.  **Prerequisites:** Docker & Docker Compose.
-2.  **Environment:** Copy `.env.example` to `.env` and fill in credentials.
-3.  **Start System:**
-    ```bash
-    docker-compose up -d --build
-    ```
-
-## 🌳 Git Strategy
-
-*   `main`: **Protected**. Production-ready code.
-*   `dev`: **Active Development**. All features merge here first.
-*   `feature/*`: New capabilities (e.g., `feature/tiktok-agent`).
-*   `fix/*`: Bug fixes (e.g., `fix/puppeteer-crash`).
-
-## 🤖 Current Status
-*   **Dashboard:** Online (v1.0).
-*   **Agents:**
-    *   Detector: Active (Inspecting & Scraping).
-    *   Instagram: Active (Login success).
-    *   Content: Active (Generating via Local LLM).
-    *   Assets: Active (Finding Drive links).
-
-## 📝 Roadmap
-*   [ ] Full N8N Workflow Integration.
-*   [ ] TikTok Agent Implementation.
-*   [ ] Sales Funnel Automation.
-=======
 # Hotmart Automation System v1.1
 
 Sistema autónomo de gestión de afiliados, creación de contenido y automatización de marketing para Hotmart.
@@ -92,44 +35,44 @@ Integración con N8N para flujos de trabajo visuales.
 
 ### Configuración
 1.  Clonar repositorio:
-    \`\`\`bash
+    ```bash
     git clone https://github.com/andersonmares81/hotmart-automation.git
     cd hotmart-automation
-    \`\`\`
+    ```
 2.  Crear archivo `.env` (guíate del ejemplo en la documentación interna).
 3.  Iniciar servicios:
-    \`\`\`bash
+    ```bash
     docker-compose up -d --build
-    \`\`\`
+    ```
 
 ## 🤖 Uso de Agentes Nuevos
 
 ### Git Manager
 Envía una petición para crear una rama o commit inteligente:
-\`\`\`bash
+```bash
 curl -X POST http://localhost:4000/api/agents/git/commit \
 -H "Content-Type: application/json" \
 -d '{"message": "fix login validation"}'
-\`\`\`
+```
 *(La IA clasificará si es un 'fix' o 'feature' y creará la rama adecuada)*
 
 ### Manager & N8N
 Simula una tarea generada por el Manager:
-\`\`\`bash
+```bash
 curl -X POST http://localhost:4000/api/agents/manager/task \
 -H "Content-Type: application/json" \
 -d '{"type": "daily_report", "payload": {}}'
-\`\`\`
+```
 *Esto enviará un evento al workflow de N8N.*
 
 ## 📂 Estructura del Proyecto
-\`\`\`
+```
 .
 ├── dashboard/      # Frontend React
 ├── motor/          # Backend Node.js + Puppeteer + Ollama Agents
 ├── n8n/            # Workflows de automatización
 └── data/           # Persistencia de BD y Redis
-\`\`\`
+```
 
 ## 📝 Changelog v1.1
 *   Implementación de GitAgent, LearningAgent y ManagerAgent.
@@ -139,4 +82,3 @@ curl -X POST http://localhost:4000/api/agents/manager/task \
 
 ---
 Desarrollado con ❤️ para automatización total.
->>>>>>> 975adf0 (feat: re-initialize full project ecosystem)
