@@ -234,6 +234,7 @@ import assetsAgent from './src/agents/AssetsAgent.js';
 import gitAgent from './src/agents/GitAgent.js';
 import learningAgent from './src/agents/LearningAgent.js';
 import managerAgent from './src/agents/ManagerAgent.js';
+import affiliateAgent from './src/agents/AffiliateAgent.js';
 
 // Init Agents
 (async () => {
@@ -592,6 +593,38 @@ app.post('/api/agents/instagram/start', async (req, res) => {
              console.log('Instagram Task Complete:', result);
         });
         res.json({ status: 'started', msg: 'Instagram Agent iniciando sesión...' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Affiliate Agent: Generate Link
+app.post('/api/affiliate/generate-link', async (req, res) => {
+    const { productId, platform } = req.body;
+    try {
+        const result = await affiliateAgent.generateAffiliateLink(productId, platform);
+        res.json({ status: 'success', ...result });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Affiliate Agent: Process Product
+app.post('/api/affiliate/process-product', async (req, res) => {
+    const { productId } = req.body;
+    try {
+        const result = await affiliateAgent.processProduct(productId);
+        res.json({ status: 'success', ...result });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Affiliate Agent: Get Metrics
+app.get('/api/affiliate/metrics', async (req, res) => {
+    try {
+        const result = await affiliateAgent.getAffiliateMetrics();
+        res.json({ status: 'success', metrics: result });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
