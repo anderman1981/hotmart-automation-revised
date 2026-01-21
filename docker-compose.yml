@@ -105,6 +105,7 @@ services:
       - INSTAGRAM_USER=${INSTAGRAM_USER}
       - INSTAGRAM_PASSWORD=${INSTAGRAM_PASSWORD}
       - GIT_REPO_PATH=/repo
+      - OLLAMA_HOST=http://ollama:11434
 
   dashboard:
     build: ./dashboard
