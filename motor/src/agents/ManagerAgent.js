@@ -42,30 +42,60 @@ class ManagerAgent {
         return result;
     }
 
+    async wakeAgent(agentName) {
+        console.log(`⚡ Manager: Waking up ${agentName}...`);
+        try {
+            switch(agentName.toLowerCase()) {
+                case 'detector':
+                    const { default: detector } = await import('./DetectorAgent.js');
+                    if (!detector.browser) await detector.init(); // Assume init logic exists
+                    break;
+                case 'learning':
+                    const { default: learning } = await import('./LearningAgent.js');
+                    if (!learning.browser) await learning.init();
+                    break;
+                case 'instagram':
+                    const { default: insta } = await import('./InstagramAgent.js');
+                    // Instagram might need login, not just init
+                    await insta.login(); 
+                    break;
+                default:
+                    console.log(`⚠️ Agent ${agentName} does not support explicit wake.`);
+                    return false;
+            }
+            return true;
+        } catch (e) {
+            console.error(`❌ Failed to wake ${agentName}:`, e.message);
+            return false;
+        }
+    }
+
     async runDailyRoutine() {
         console.log('🌅 Starting Daily Automation Routine...');
         const report = { date: new Date(), steps: [] };
 
         try {
             // Step 1: Market Scan
-            // Lazy load to avoid circular dep if any (ESM Dynamic Import)
+            console.log('Step 1: Waking Detector Agent for Market Scan...');
+            await this.wakeAgent('detector');
             const { default: detectorAgent } = await import('./DetectorAgent.js');
-            console.log('Step 1: Scanning Market...');
+            
             const scanResult = await detectorAgent.scanMarket();
             report.steps.push({ name: 'Market Scan', status: 'completed', details: scanResult });
 
             // Step 2: Learning
-            // Lazy load Learning Agent
-             const { default: learningAgent } = await import('./LearningAgent.js');
-            console.log('Step 2: Learning from Academy...');
+            console.log('Step 2: Waking Learning Agent...');
+            await this.wakeAgent('learning');
+            const { default: learningAgent } = await import('./LearningAgent.js');
+            
             const learnedCourses = await learningAgent.learnSpecificCourses();
             report.steps.push({ name: 'Academy Learning', status: 'completed', details: learnedCourses });
 
             // Step 3: Strategy Generation for Top Products (Mocking top products for now)
             // In a real scenario, we'd query the DB for products with status 'active' or 'testing'
             const productsToStrategize = [
-                { name: 'Excel para Negocios', niche: 'Business' },
-                { name: 'Curso de Manicure Ruso', niche: 'Beauty' }
+                { name: 'Excel for Business', niche: 'Business' },
+                { name: 'Russian Manicure Course', niche: 'Beauty' }
             ];
 
             const strategies = [];

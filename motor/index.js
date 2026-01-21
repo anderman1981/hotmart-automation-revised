@@ -38,7 +38,7 @@ redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
 (async () => {
   await redisClient.connect();
-  console.log('✅ Conectado a Redis');
+  console.log('✅ Connected to Redis');
 })();
 
 // Global System State
@@ -46,7 +46,7 @@ let SYSTEM_ACTIVE = true;
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ status: 'Motor Bayesian Activo 🚀', mode: process.env.NODE_ENV, system_active: SYSTEM_ACTIVE });
+  res.json({ status: 'Bayesian Engine Active 🚀', mode: process.env.NODE_ENV, system_active: SYSTEM_ACTIVE });
 });
 
 // --- Knowledge Base API ---
@@ -311,6 +311,42 @@ app.get('/api/git/status', async (req, res) => {
     }
 });
 
+// --- SETTINGS & DATA API ---
+
+// Start Specific Agent
+app.post('/api/agents/:name/start', async (req, res) => {
+    const { name } = req.params;
+    try {
+        const result = await managerAgent.wakeAgent(name);
+        if (result) {
+            res.json({ status: 'success', msg: `Agent ${name} wake signal sent.` });
+        } else {
+            res.status(400).json({ status: 'failed', error: 'Agent could not be woken or does not support auto-wake.' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Mock Menu Settings
+app.get('/api/settings/menu', (req, res) => {
+    res.json({
+        menu: [
+            { id: 'dashboard', label: 'Dashboard', path: '/', default: true },
+            { id: 'products', label: 'Products', path: '/products' },
+            { id: 'agents', label: 'Agents', path: '/agents' }
+        ]
+    });
+});
+
+// Data Ingestion Endpoint
+app.post('/api/agents/:agent/data', (req, res) => {
+    const { agent } = req.params;
+    const { type, filename } = req.body;
+    console.log(`📂 Data received for ${agent}: ${filename} (${type})`);
+    res.json({ status: 'success', msg: 'File queued for processing' });
+});
+
 import managerAgent from './src/agents/ManagerAgent.js';
 
 // ...
@@ -503,5 +539,5 @@ app.post('/api/agents/manager/daily', async (req, res) => {
 
 
 app.listen(PORT, () => {
-  console.log(`Server corriendo en el puerto ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
