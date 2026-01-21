@@ -6,8 +6,8 @@ import clsx from 'clsx';
 const Sidebar = () => {
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-        { icon: Package, label: 'Productos', path: '/productos' }, // Fixed path
-        { icon: Bot, label: 'Agentes', path: '/agentes' }, // Fixed path
+        { icon: Package, label: 'Products', path: '/productos' }, // Fixed path
+        { icon: Bot, label: 'Agents', path: '/agentes' }, // Fixed path
     ];
 
     return (
@@ -47,7 +47,7 @@ const Sidebar = () => {
                     )}
                 >
                     <Settings size={20} className="group-hover:rotate-90 transition-transform duration-500" />
-                    <span>Configuración</span>
+                    <span>Settings</span>
                 </NavLink>
 
                 {/* System Info Card */}

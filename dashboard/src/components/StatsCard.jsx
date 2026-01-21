@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const StatsCard = ({ title, value, icon: Icon, trend, color = "blue", delay = 0 }) => {
+const StatsCard = ({ title, value, icon: Icon, trend, trendLabel, trendSuffix = '%', color = "blue", delay = 0 }) => {
     return (
         <div
             className="card-glass p-6 relative overflow-hidden group hover:border-white/20 animate-slide-up"
@@ -26,8 +26,8 @@ const StatsCard = ({ title, value, icon: Icon, trend, color = "blue", delay = 0 
                         trend > 0 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
                     )}>
                         {trend > 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        <span>{Math.abs(trend)}%</span>
-                        <span className="opacity-60 ml-1">vs last week</span>
+                        <span>{Math.abs(trend)}{trendSuffix}</span>
+                        <span className="opacity-60 ml-1">{trendLabel || 'vs last week'}</span>
                     </div>
                 )}
             </div>
