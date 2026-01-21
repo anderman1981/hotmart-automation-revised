@@ -3,8 +3,8 @@ import { Ollama } from 'ollama';
 class ContentAgent {
     constructor() {
         // Connect to the local Ollama container
-        // Configured Project Port: 4126
-        const host = process.env.OLLAMA_HOST || 'http://localhost:4126';
+        // Configured Project Port: 11434
+        const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
         this.ollama = new Ollama({ host });
         this.model = process.env.OLLAMA_MODEL || 'llama3.2:latest'; // Using active model
     }

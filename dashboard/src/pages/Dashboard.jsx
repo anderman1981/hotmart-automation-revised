@@ -5,47 +5,6 @@ import {
     DollarSign, Package, FileText, Users, Activity,
     ArrowUpRight, MonitorPlay, Zap, RefreshCw, Server, BookOpen, Power
 } from 'lucide-react';
-// ... existing imports ...
-
-// ... inside component ...
-
-const handleSystemToggle = async () => {
-    const action = systemOn ? 'stopping' : 'starting';
-    const toastId = toast.loading(`System ${action}...`);
-
-    try {
-        const endpoint = systemOn ? '/api/system/stop' : '/api/system/start';
-        const res = await fetch(import.meta.env.VITE_API_URL + endpoint, { method: 'POST' });
-        const data = await res.json();
-
-        if (data.status === 'success') {
-            setSystemOn(!systemOn);
-            toast.success(data.msg || `System ${systemOn ? 'Stopped' : 'Started'}`, { id: toastId });
-        } else {
-            toast.error('Operation failed', { id: toastId });
-        }
-    } catch (e) {
-        toast.error('Error toggling system: ' + e.message, { id: toastId });
-    }
-};
-
-const handleGlobalScan = async () => {
-    setLoadingScan(true);
-    toast.info('Initiating Deep Global Scan...');
-    try {
-        const res = await fetch(import.meta.env.VITE_API_URL + '/api/agents/detector/start', {
-            method: 'POST',
-            body: JSON.stringify({ deep: true }),
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await res.json();
-        toast.success(data.msg || 'Scan started successfully');
-    } catch (error) {
-        toast.error('Error starting scan: ' + error.message);
-    } finally {
-        setLoadingScan(false);
-    }
-};
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
@@ -118,26 +77,48 @@ const Dashboard = () => {
     }, []);
 
     const handleSystemToggle = async () => {
+        const action = systemOn ? 'stopping' : 'starting';
+        const toastId = toast.loading(`System ${action}...`);
+
         try {
             const endpoint = systemOn ? '/api/system/stop' : '/api/system/start';
             const res = await fetch(import.meta.env.VITE_API_URL + endpoint, { method: 'POST' });
             const data = await res.json();
+
             if (data.status === 'success') {
                 setSystemOn(!systemOn);
+                toast.success(data.msg || `System ${systemOn ? 'Stopped' : 'Started'}`, { id: toastId });
+            } else {
+                toast.error('Operation failed', { id: toastId });
             }
         } catch (e) {
-            alert('Error toggling system: ' + e.message);
+            toast.error('Error toggling system: ' + e.message, { id: toastId });
         }
     };
 
     const handleGlobalScan = async () => {
+        if (!systemOn) {
+            toast.error('Please start the system first (SYSTEM ON)');
+            return;
+        }
+
         setLoadingScan(true);
+        const toastId = toast.loading('Initiating Deep Global Scan...');
         try {
-            const res = await fetch(import.meta.env.VITE_API_URL + '/api/agents/detector/start', { method: 'POST' });
+            const res = await fetch(import.meta.env.VITE_API_URL + '/api/agents/detector/start', {
+                method: 'POST',
+                body: JSON.stringify({ deep: true }),
+                headers: { 'Content-Type': 'application/json' }
+            });
             const data = await res.json();
-            alert(`✅ ${data.msg}`);
+
+            if (res.ok) {
+                toast.success(data.msg || 'Scan started successfully', { id: toastId });
+            } else {
+                toast.error(data.error || 'Scan failed to start', { id: toastId });
+            }
         } catch (error) {
-            alert('❌ Error starting scan: ' + error.message);
+            toast.error('Error starting scan: ' + error.message, { id: toastId });
         } finally {
             setLoadingScan(false);
         }
@@ -186,10 +167,10 @@ const Dashboard = () => {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={handleGlobalScan}
-                        disabled={loadingScan || !systemOn}
-                        className={`px-6 py-3 rounded-xl font-bold font-display shadow-lg flex items-center gap-2 transition-all ${loadingScan || !systemOn
+                        disabled={loadingScan}
+                        className={`px-6 py-3 rounded-xl font-bold font-display shadow-lg flex items-center gap-2 transition-all ${loadingScan
                             ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
-                            : 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-900/40'
+                            : systemOn ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-900/40' : 'bg-orange-600/50 hover:bg-orange-500/50 text-white/50 border border-orange-500/30'
                             }`}
                     >
                         <Zap size={20} className={loadingScan ? 'animate-pulse' : 'fill-white'} />
