@@ -6,6 +6,8 @@ const SettingsAgents = () => {
     const [agents, setAgents] = useState([]);
     const [selectedAgent, setSelectedAgent] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newAgentData, setNewAgentData] = useState({ name: '', description: '' });
 
     const fetchAgents = async () => {
         try {
@@ -25,6 +27,32 @@ const SettingsAgents = () => {
         const interval = setInterval(fetchAgents, 5000);
         return () => clearInterval(interval);
     }, []);
+
+    const handleCreateAgent = async () => {
+        if (!newAgentData.name) return toast.error('Agent Name is required');
+        
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    agentName: newAgentData.name, 
+                    description: newAgentData.description 
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'created') {
+                toast.success(data.msg);
+                setIsCreating(false);
+                setNewAgentData({ name: '', description: '' });
+                fetchAgents();
+            } else {
+                toast.error(data.error);
+            }
+        } catch (e) {
+            toast.error('Network error creating agent');
+        }
+    };
 
     const toggleAgent = async (agentId, currentStatus) => {
         const action = currentStatus.includes('Running') ? 'stop' : 'start'; // Simple toggle logic needs backend support for 'start' specific agents if not generic
@@ -65,9 +93,35 @@ const SettingsAgents = () => {
         <div className="flex gap-6 h-[600px]">
             {/* Agent List */}
             <div className="w-1/3 bg-white/5 rounded-xl border border-white/10 overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-white/10 bg-white/5">
+                <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
                     <h3 className="text-lg font-bold text-white">System Agents</h3>
+                    <button 
+                        onClick={() => setIsCreating(true)}
+                        className="p-1.5 bg-orange-600/20 text-orange-400 border border-orange-500/30 rounded hover:bg-orange-600/30 transition-all font-bold text-[10px] uppercase"
+                    >
+                        New Agent
+                    </button>
                 </div>
+                {isCreating && (
+                    <div className="p-3 bg-orange-600/10 border-b border-orange-500/20 space-y-2 animate-in slide-in-from-top-2">
+                        <input 
+                            className="w-full bg-zinc-900 border border-white/10 rounded p-1.5 text-xs text-white" 
+                            placeholder="Name (e.g. TikTokAgent)" 
+                            value={newAgentData.name}
+                            onChange={e => setNewAgentData({...newAgentData, name: e.target.value})}
+                        />
+                        <input 
+                            className="w-full bg-zinc-900 border border-white/10 rounded p-1.5 text-xs text-white" 
+                            placeholder="Short description..." 
+                            value={newAgentData.description}
+                            onChange={e => setNewAgentData({...newAgentData, description: e.target.value})}
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setIsCreating(false)} className="text-[10px] text-zinc-500 px-2">Cancel</button>
+                            <button onClick={handleCreateAgent} className="bg-orange-600 text-white text-[10px] px-3 py-1 rounded font-bold">Create Source</button>
+                        </div>
+                    </div>
+                )}
                 <div className="overflow-y-auto flex-1 p-2 space-y-2">
                     {agents.map(agent => (
                         <div

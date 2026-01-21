@@ -3,6 +3,7 @@ import { Bot, Menu, Database, Shield, LayoutGrid } from 'lucide-react';
 import SettingsAgents from './settings/SettingsAgents';
 import SettingsMenu from './settings/SettingsMenu';
 import SettingsData from './settings/SettingsData';
+import SettingsAPI from './settings/SettingsAPI';
 
 function Config() {
     const [activeTab, setActiveTab] = useState('agents');
@@ -12,6 +13,7 @@ function Config() {
             case 'agents': return <SettingsAgents />;
             case 'menu': return <SettingsMenu />;
             case 'data': return <SettingsData />;
+            case 'security': return <SettingsAPI />;
             default: return <SettingsAgents />;
         }
     };
@@ -43,11 +45,12 @@ function Config() {
                     >
                         <Database size={18} /> <span className="font-medium">Data Sources</span>
                     </button>
-                    <div className="h-px bg-white/5 my-4 mx-2"></div>
-                    <div className="px-4 py-2">
-                        <p className="text-xs text-zinc-600 uppercase tracking-widest font-bold mb-2">Advanced</p>
-                        <p className="text-xs text-zinc-500">Security & API Keys</p>
-                    </div>
+                    <button
+                        onClick={() => setActiveTab('security')}
+                        className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition-colors ${activeTab === 'security' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-zinc-400 hover:bg-white/5 hover:text-white'}`}
+                    >
+                        <Shield size={18} /> <span className="font-medium">Security & API Keys</span>
+                    </button>
                 </div>
 
                 {/* Content Area */}
