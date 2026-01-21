@@ -82,7 +82,7 @@ services:
       - /app/node_modules
       - ./:/repo
     ports:
-      - "4000:4000"
+      - "4123:4123"
     depends_on:
       db:
         condition: service_healthy
@@ -105,18 +105,17 @@ services:
       - INSTAGRAM_PASSWORD=${INSTAGRAM_PASSWORD}
       - GIT_REPO_PATH=/repo
 
-
   dashboard:
     build: ./dashboard
     container_name: hotmart_dashboard
     restart: always
     ports:
-      - "4004:4004"
+      - "4124:4124"
     volumes:
       - ./dashboard:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:4000
+      - VITE_API_URL=http://localhost:4123
     depends_on:
       - motor
     networks:
