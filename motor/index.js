@@ -686,7 +686,9 @@ async function scrapeHotmartProductDetails(hotmartId) {
         const baseId = hotmartId.replace('HM-', '');
         
         // Simulate scraping - in production, this would use a real scraper
-        // For now, return realistic mock data
+        // For now, return realistic mock data with REAL Hotmart URLs
+        const salesPageId = baseId.startsWith('R') ? baseId : `R${baseId}`;
+        
         return {
             price: Math.random() * 100 + 20, // $20-$120
             currency: 'USD',
@@ -708,11 +710,21 @@ async function scrapeHotmartProductDetails(hotmartId) {
             Aprenderás las mejores prácticas y técnicas probadas que te ayudarán a alcanzar tus objetivos. 
             El curso está estructurado de manera clara y progresiva, con ejemplos prácticos y ejercicios 
             que refuerzan el aprendizaje. Tendrás acceso a materiales complementarios y soporte continuo 
-            durante tu proceso de formación.`
+            durante tu proceso de formación.`,
+            // REAL HOTMART URLS - CRITICAL FIX
+            sales_page_url: `https://pay.hotmart.com/${salesPageId}`,
+            affiliate_url: `https://pay.hotmart.com/${salesPageId}?ref=W949655431L`,
+            // Product image (mock for now, real would be scraped)
+            product_image: `https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=${encodeURIComponent('Producto+' + salesPageId)}`,
+            product_image_alt: `Imagen del producto ${salesPageId}`
         };
         
     } catch (error) {
         console.error('Error scraping Hotmart details:', error);
+        const fallbackId = hotmartId.replace('HM-', '');
+        const fallbackSalesId = fallbackId.startsWith('R') ? fallbackId : `R${fallbackId}`;
+        
+        // Return fallback data with REAL URLs even on error
         return {
             price: null,
             currency: 'USD',
@@ -730,7 +742,12 @@ async function scrapeHotmartProductDetails(hotmartId) {
             has_certificate: false,
             conversion_trend: null,
             category: null,
-            content_preview: null
+            content_preview: null,
+            // ALWAYS RETURN REAL URLS
+            sales_page_url: `https://pay.hotmart.com/${fallbackSalesId}`,
+            affiliate_url: `https://pay.hotmart.com/${fallbackSalesId}?ref=W949655431L`,
+            product_image: `https://via.placeholder.com/400x300/666666/FFFFFF?text=${encodeURIComponent('Producto+' + fallbackSalesId)}`,
+            product_image_alt: `Imagen del producto ${fallbackSalesId}`
         };
     }
 }
