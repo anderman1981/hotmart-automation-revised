@@ -147,8 +147,22 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
                         <div className="space-y-8">
                             {/* Product Header */}
                             <div className="flex items-start gap-6">
-                                <div className="w-32 h-32 bg-zinc-800 rounded-xl flex items-center justify-center">
-                                    <Package className="text-zinc-600 w-12 h-12" />
+                                <div className="w-32 h-32 bg-zinc-800 rounded-xl overflow-hidden flex-shrink-0">
+                                    {productDetails.product_image ? (
+                                        <img 
+                                            src={productDetails.product_image}
+                                            alt={productDetails.product_image_alt || productDetails.name}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = `https://via.placeholder.com/400x300/666666/FFFFFF?text=${encodeURIComponent(productDetails.name)}`;
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <Package className="text-zinc-600 w-12 h-12" />
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-3xl font-bold text-white mb-2">
@@ -327,17 +341,15 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
                                     <ExternalLink className="w-4 h-4" />
                                     Ver Página de Ventas
                                 </a>
-                                {productDetails.affiliate_url && (
-                                    <a
-                                        href={productDetails.affiliate_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
-                                    >
-                                        <DollarSign className="w-4 h-4" />
-                                            Enlace de Afiliado
-                                    </a>
-                                )}
+                                <a
+                                    href={productDetails.affiliate_url || productDetails.url_sales_page}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                                >
+                                    <DollarSign className="w-4 h-4" />
+                                    {productDetails.affiliate_url ? 'Enlace de Afiliado' : 'Ir a Ventas'}
+                                </a>
                             </div>
                         </div>
                     )}
