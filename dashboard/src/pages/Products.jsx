@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Snowflake, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Package, Snowflake, Trash2, CheckSquare, Square, Eye } from 'lucide-react';
+import ProductDetailModal from '../components/ProductDetailModal';
 
 const Products = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedProducts, setSelectedProducts] = useState(new Set());
     const [activeView, setActiveView] = useState('active'); // 'active', 'freezer', 'all'
+    const [modalProduct, setModalProduct] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Helper functions - MOVED BEFORE JSX
     const toggleProductSelection = (productId) => {
@@ -199,11 +202,23 @@ const Products = () => {
                                     
                                     {/* Frozen Icon */}
                                     {p.status === 'cold' && (
-                                        <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full text-xs font-medium">
+                                        <div className="absolute top-2 right-12 flex items-center gap-1 bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full text-xs font-medium">
                                             <Snowflake className="w-3 h-3" />
                                             Freezer
                                         </div>
                                     )}
+                                    
+                                    {/* View Details Button */}
+                                    <button
+                                        onClick={() => {
+                                            setModalProduct(p.id);
+                                            setIsModalOpen(true);
+                                        }}
+                                        className="absolute top-2 right-2 p-2 bg-zinc-800/80 hover:bg-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-all hover:scale-105"
+                                        title="Ver detalles completos"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                    </button>
                                     <div className="text-xs font-mono text-zinc-500 bg-zinc-900 px-2 py-1 rounded">
                                         {p.niche || 'General'}
                                     </div>
@@ -236,6 +251,16 @@ const Products = () => {
                     )}
                 </div>
             )}
+            
+            {/* Product Detail Modal */}
+            <ProductDetailModal
+                productId={modalProduct}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setModalProduct(null);
+                }}
+                isOpen={isModalOpen}
+            />
         </div>
     );
 };

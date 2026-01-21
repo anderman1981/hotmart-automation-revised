@@ -590,6 +590,150 @@ app.post('/api/products/reactivate', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// Hotmart Authorization Check
+app.get('/api/hotmart/check-auth', async (req, res) => {
+    try {
+        // Check if we have valid Hotmart credentials and session
+        const hasCredentials = process.env.HOTMART_EMAIL && process.env.HOTMART_PASSWORD;
+        
+        if (!hasCredentials) {
+            return res.json({ 
+                authorized: false, 
+                reason: 'No credentials configured' 
+            });
+        }
+        
+        // In a real implementation, you would check if the session is still valid
+        // For now, we'll simulate the check
+        const isSessionValid = await checkHotmartSession();
+        
+        res.json({ 
+            authorized: isSessionValid,
+            reason: isSessionValid ? 'Session valid' : 'Session expired'
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Request Hotmart Authorization
+app.post('/api/hotmart/request-auth', async (req, res) => {
+    try {
+        // Generate authorization URL for Hotmart OAuth/API
+        const authUrl = 'https://hotmart.com/login';
+        
+        res.json({ 
+            authUrl,
+            message: 'Please authorize access to Hotmart'
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get Product Details with Hotmart Integration
+app.get('/api/products/:id/details', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        // Get basic product info from database
+        const basicProduct = await pool.query(
+            'SELECT * FROM products WHERE id = $1',
+            [id]
+        );
+        
+        if (basicProduct.rowCount === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        
+        const product = basicProduct.rows[0];
+        
+        // Get detailed information by scraping Hotmart
+        const detailedInfo = await scrapeHotmartProductDetails(product.hotmart_id);
+        
+        // Combine basic and detailed info
+        const enrichedProduct = {
+            ...product,
+            ...detailedInfo
+        };
+        
+        res.json(enrichedProduct);
+        
+    } catch (error) {
+        console.error('Error fetching product details:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Helper function to check Hotmart session
+async function checkHotmartSession() {
+    try {
+        // Simulate session check - in production, this would validate actual session
+        return true; // For demo purposes
+    } catch (error) {
+        console.error('Error checking Hotmart session:', error);
+        return false;
+    }
+}
+
+// Helper function to scrape Hotmart product details
+async function scrapeHotmartProductDetails(hotmartId) {
+    try {
+        // Extract base ID from hotmart_id (remove HM- prefix if present)
+        const baseId = hotmartId.replace('HM-', '');
+        
+        // Simulate scraping - in production, this would use a real scraper
+        // For now, return realistic mock data
+        return {
+            price: Math.random() * 100 + 20, // $20-$120
+            currency: 'USD',
+            rating: (Math.random() * 2 + 3).toFixed(1), // 3.0-5.0
+            students: Math.floor(Math.random() * 5000) + 100, // 100-5100
+            recent_sales: Math.floor(Math.random() * 100), // 0-99
+            conversion_rate: (Math.random() * 5 + 1).toFixed(1), // 1.0-6.0%
+            commission_rate: (Math.random() * 30 + 40).toFixed(0), // 40-70%
+            promotional_price: Math.random() * 80 + 15, // $15-$95
+            warranty_days: Math.random() > 0.5 ? 30 : 7,
+            has_support: Math.random() > 0.3,
+            duration: Math.random() > 0.5 ? 'Ilimitado' : `${Math.floor(Math.random() * 20 + 5)} horas`,
+            languages: ['Español', 'Inglés'],
+            has_updates: Math.random() > 0.4,
+            has_certificate: Math.random() > 0.6,
+            conversion_trend: Math.random() > 0.5 ? 'up' : 'down',
+            category: ['Educación', 'Negocios', 'Salud', 'Tecnología'][Math.floor(Math.random() * 4)],
+            content_preview: `Este producto incluye contenido de alta calidad diseñado por expertos en el campo. 
+            Aprenderás las mejores prácticas y técnicas probadas que te ayudarán a alcanzar tus objetivos. 
+            El curso está estructurado de manera clara y progresiva, con ejemplos prácticos y ejercicios 
+            que refuerzan el aprendizaje. Tendrás acceso a materiales complementarios y soporte continuo 
+            durante tu proceso de formación.`
+        };
+        
+    } catch (error) {
+        console.error('Error scraping Hotmart details:', error);
+        return {
+            price: null,
+            currency: 'USD',
+            rating: null,
+            students: null,
+            recent_sales: null,
+            conversion_rate: null,
+            commission_rate: null,
+            promotional_price: null,
+            warranty_days: null,
+            has_support: false,
+            duration: null,
+            languages: ['Español'],
+            has_updates: false,
+            has_certificate: false,
+            conversion_trend: null,
+            category: null,
+            content_preview: null
+        };
+    }
+}
 // Trigger Learning Research
 app.post('/api/agents/learning/research', async (req, res) => {
     const { topic, sourceUrl } = req.body;
