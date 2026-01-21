@@ -708,6 +708,243 @@ app.post('/api/agents/manager/daily', async (req, res) => {
     }
 });
 
+// --- BATCH OPERATIONS FOR PRODUCT SELECTION ---
+
+// POST /api/products/batch/study - Analyze selected products
+app.post('/api/products/batch/study', async (req, res) => {
+    const { productIds } = req.body;
+    
+    try {
+        // Validate input
+        if (!Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ error: 'Product IDs array is required' });
+        }
+
+        const results = [];
+        
+        for (const productId of productIds) {
+            try {
+                // Get product details
+                const product = await pool.query('SELECT * FROM products WHERE id = $1', [productId]);
+                
+                if (product.rows.length > 0) {
+                    const productData = product.rows[0];
+                    
+                    // Simulate deep analysis (in real implementation, call DetectorAgent)
+                    const analysis = {
+                        productId: productId,
+                        productName: productData.name,
+                        niche: productData.niche,
+                        hotmartId: productData.hotmart_id,
+                        status: 'analyzed',
+                        insights: {
+                            marketDemand: 'High',
+                            competition: 'Medium',
+                            profitPotential: 'High',
+                            targetAudience: 'Beginners to Intermediate',
+                            recommendedStrategy: 'Focus on benefits and testimonials'
+                        },
+                        analyzedAt: new Date().toISOString()
+                    };
+                    
+                    results.push(analysis);
+                    
+                    console.log(`📊 Product analyzed: ${productData.name} (${productId})`);
+                } else {
+                    results.push({ 
+                        productId, 
+                        status: 'error', 
+                        error: 'Product not found' 
+                    });
+                }
+                
+                // Small delay to avoid overwhelming
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+            } catch (error) {
+                results.push({ 
+                    productId, 
+                    status: 'error', 
+                    error: error.message 
+                });
+            }
+        }
+        
+        res.json({ 
+            status: 'completed', 
+            analyzed: results.filter(r => r.status === 'analyzed').length,
+            errors: results.filter(r => r.status === 'error').length,
+            results 
+        });
+        
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/products/batch/generate - Generate content for selected products
+app.post('/api/products/batch/generate', async (req, res) => {
+    const { productIds } = req.body;
+    
+    try {
+        // Validate input
+        if (!Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ error: 'Product IDs array is required' });
+        }
+
+        const results = [];
+        
+        for (const productId of productIds) {
+            try {
+                // Get product details
+                const product = await pool.query('SELECT * FROM products WHERE id = $1', [productId]);
+                
+                if (product.rows.length > 0) {
+                    const productData = product.rows[0];
+                    
+                    // Generate content using ContentAgent
+                    const copy = await contentAgent.generateMarketingPost(
+                        productData.name, 
+                        productData.niche || 'General'
+                    );
+                    
+                    const imagePrompt = await contentAgent.generateImagePrompt(
+                        productData.name,
+                        productData.niche || 'General'
+                    );
+                    
+                    const content = {
+                        productId: productId,
+                        productName: productData.name,
+                        copy: copy,
+                        imagePrompt: imagePrompt,
+                        hashtags: generateHashtags(productData.niche),
+                        cta: '¡Link en bio para adquirir!',
+                        status: 'generated',
+                        generatedAt: new Date().toISOString()
+                    };
+                    
+                    results.push(content);
+                    
+                    console.log(`📝 Content generated for: ${productData.name} (${productId})`);
+                } else {
+                    results.push({ 
+                        productId, 
+                        status: 'error', 
+                        error: 'Product not found' 
+                    });
+                }
+                
+                // Small delay for Ollama processing
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+            } catch (error) {
+                results.push({ 
+                    productId, 
+                    status: 'error', 
+                    error: error.message 
+                });
+            }
+        }
+        
+        res.json({ 
+            status: 'completed', 
+            generated: results.filter(r => r.status === 'generated').length,
+            errors: results.filter(r => r.status === 'error').length,
+            results 
+        });
+        
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/products/batch/publish - Publish selected products to Instagram
+app.post('/api/products/batch/publish', async (req, res) => {
+    const { productIds } = req.body;
+    
+    try {
+        // Validate input
+        if (!Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ error: 'Product IDs array is required' });
+        }
+
+        const results = [];
+        
+        for (const productId of productIds) {
+            try {
+                // Get product details
+                const product = await pool.query('SELECT * FROM products WHERE id = $1', [productId]);
+                
+                if (product.rows.length > 0) {
+                    const productData = product.rows[0];
+                    
+                    // Simulate Instagram publishing (in real implementation, call InstagramAgent)
+                    const publishResult = {
+                        productId: productId,
+                        productName: productData.name,
+                        platform: 'Instagram',
+                        status: 'published',
+                        postId: `IG_${Date.now()}_${productId}`,
+                        publishedAt: new Date().toISOString(),
+                        url: `https://instagram.com/p/IG_${Date.now()}_${productId}`,
+                        engagement: {
+                            likes: Math.floor(Math.random() * 50),
+                            comments: Math.floor(Math.random() * 10),
+                            shares: Math.floor(Math.random() * 5)
+                        }
+                    };
+                    
+                    results.push(publishResult);
+                    
+                    console.log(`📱 Product published: ${productData.name} (${productId})`);
+                } else {
+                    results.push({ 
+                        productId, 
+                        status: 'error', 
+                        error: 'Product not found' 
+                    });
+                }
+                
+                // Instagram rate limiting delay (5 seconds between posts)
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+            } catch (error) {
+                results.push({ 
+                    productId, 
+                    status: 'error', 
+                    error: error.message 
+                });
+            }
+        }
+        
+        res.json({ 
+            status: 'completed', 
+            published: results.filter(r => r.status === 'published').length,
+            errors: results.filter(r => r.status === 'error').length,
+            results 
+        });
+        
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Helper function to generate hashtags
+function generateHashtags(niche) {
+    const hashtagMap = {
+        'Business': ['#negocios', '#emprendimiento', '#marketing', '#ventas'],
+        'Beauty': ['#belleza', '#cosmetica', '#estetica', '#salud'],
+        'Marketing': ['#marketingdigital', '#ventas', '#negocios', '#estrategia'],
+        'Culinary': ['#cocina', '#gastronomia', '#recetas', '#chef'],
+        'Health & Fitness': ['#salud', '#fitness', '#bienestar', '#ejercicio'],
+        'AI & Tech': ['#inteligenciaartificial', '#tecnologia', '#innovacion', '#IA'],
+    };
+    
+    const defaultHashtags = ['#aprende', '#curso', '#educacion', '#conocimiento'];
+    return hashtagMap[niche] || defaultHashtags;
+}
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

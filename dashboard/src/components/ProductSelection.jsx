@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Package, CheckSquare, Square, Play, FileText, Send, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { CheckSquare, Square, Play, FileText, Send } from 'lucide-react';
 
 const ProductSelection = ({ products, onBatchAction }) => {
   const [selectedProducts, setSelectedProducts] = useState(new Set());
-  const [actionLoading, setActionLoading] = useState(false);
   
   const toggleSelection = (productId) => {
     const newSelection = new Set(selectedProducts);
@@ -40,18 +38,6 @@ const ProductSelection = ({ products, onBatchAction }) => {
     }
   }, []);
 
-  const handleBatchAction = async (action, productIds) => {
-    setActionLoading(true);
-    try {
-      await onBatchAction(action, productIds);
-      toast.success(`${action} iniciado para ${productIds.length} productos`);
-    } catch (error) {
-      toast.error(`Error en ${action}: ${error.message}`);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -63,23 +49,20 @@ const ProductSelection = ({ products, onBatchAction }) => {
             </span>
             <div className="flex gap-2 flex-wrap">
               <button 
-                onClick={() => handleBatchAction('study', [...selectedProducts])}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 disabled:text-zinc-400 text-white rounded-lg flex items-center gap-2 transition-colors text-sm"
+                onClick={() => onBatchAction('study', [...selectedProducts])}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm"
               >
                 <Play size={16} /> Analizar
               </button>
               <button 
-                onClick={() => handleBatchAction('generate', [...selectedProducts])}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-700 disabled:text-zinc-400 text-white rounded-lg flex items-center gap-2 transition-colors text-sm"
+                onClick={() => onBatchAction('generate', [...selectedProducts])}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm"
               >
                 <FileText size={16} /> Generar
               </button>
               <button 
-                onClick={() => handleBatchAction('publish', [...selectedProducts])}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-700 disabled:text-zinc-400 text-white rounded-lg flex items-center gap-2 transition-colors text-sm"
+                onClick={() => onBatchAction('publish', [...selectedProducts])}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors text-sm"
               >
                 <Send size={16} /> Publicar
               </button>
@@ -158,93 +141,4 @@ const ProductSelection = ({ products, onBatchAction }) => {
   );
 };
 
-const Products = () => {
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(false);
-
-    useEffect(() => {
-        fetchProducts();
-    }, []);
-
-    const fetchProducts = () => {
-        setLoading(true);
-        fetch(import.meta.env.VITE_API_URL + '/api/products')
-            .then(res => res.json())
-            .then(data => {
-                if (Array.isArray(data)) {
-                    setProducts(data);
-                } else {
-                    console.error("API returned non-array:", data);
-                    setProducts([]);
-                }
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error("Failed to fetch products", err);
-                setProducts([]);
-                setLoading(false);
-            });
-    };
-
-    const handleBatchAction = async (action, productIds) => {
-        setActionLoading(true);
-        try {
-            const endpoint = `/api/products/batch/${action}`;
-            const response = await fetch(import.meta.env.VITE_API_URL + endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productIds })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                console.log(`${action} completed:`, result);
-                // Optionally refresh data or show success message
-                if (action === 'publish') {
-                    toast.success('Productos publicados exitosamente');
-                } else if (action === 'generate') {
-                    toast.success('Contenido generado exitosamente');
-                } else if (action === 'study') {
-                    toast.success('Análisis iniciado exitosamente');
-                }
-            } else {
-                console.error(`${action} failed:`, result);
-                toast.error(`Error en ${action}: ${result.error || 'Error desconocido'}`);
-            }
-        } catch (err) {
-            console.error(`Error in ${action}:`, err);
-            toast.error(`Error en ${action}: ${err.message}`);
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    return (
-        <div className="animate-fade-in">
-            <h2 className="heading-xl text-white mb-8 flex items-center gap-3">
-                <Package className="text-orange-500" />
-                Escáner de Productos con Selección
-            </h2>
-
-            {loading ? (
-                <div className="text-zinc-500">Cargando productos...</div>
-            ) : actionLoading ? (
-                <div className="text-zinc-500">Procesando acción batch...</div>
-            ) : (!products || products.length === 0) ? (
-                <div className="col-span-full text-center py-20 text-zinc-500 border border-dashed border-zinc-800 rounded-xl">
-                    No se han detectado productos aún. <br />
-                    El agente está ejecutando su ronda de exploración.
-                </div>
-            ) : (
-                <ProductSelection 
-                    products={products} 
-                    onBatchAction={handleBatchAction}
-                />
-            )}
-        </div>
-    );
-};
-
-export default Products;
+export default ProductSelection;
