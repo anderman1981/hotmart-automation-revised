@@ -8,37 +8,42 @@ const SettingsMenu = () => {
     const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({ label: '', path: '', id: '' });
 
-    // Mock initial load from API or localStorage
-    useEffect(() => {
-        const savedMenu = localStorage.getItem('dashboard_menu');
-        if (savedMenu) {
-            setMenuItems(JSON.parse(savedMenu));
-        } else {
-            setMenuItems([
-                { id: 'dashboard', label: 'Dashboard', path: '/', default: true },
-                { id: 'products', label: 'Products', path: '/products' },
-                { id: 'agents', label: 'Agents', path: '/agents' }
-            ]);
+    const fetchMenu = async () => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/menu`);
+            const data = await res.json();
+            if (data.menu) setMenuItems(data.menu);
+        } catch (e) {
+            toast.error('Failed to load menu from server');
         }
-    }, []);
-
-    const saveToStorage = (items) => {
-        localStorage.setItem('dashboard_menu', JSON.stringify(items));
     };
 
-    const handleAdd = () => {
+    useEffect(() => {
+        fetchMenu();
+    }, []);
+
+    const handleAdd = async () => {
         if (!formData.label || !formData.path) return toast.error('Label and Path are required');
-        const newItem = { 
-            id: formData.label.toLowerCase().replace(/\s/g, '-'), 
-            label: formData.label, 
-            path: formData.path 
+        const newItem = {
+            id: formData.label.toLowerCase().replace(/\s/g, '-'),
+            label: formData.label,
+            path: formData.path
         };
-        const newItems = [...menuItems, newItem];
-        setMenuItems(newItems);
-        saveToStorage(newItems);
-        setFormData({ label: '', path: '', id: '' });
-        setIsAdding(false);
-        toast.success('Menu item added');
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/menu`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newItem)
+            });
+            if (res.ok) {
+                toast.success('Menu item saved to DB');
+                fetchMenu();
+                setFormData({ label: '', path: '', id: '' });
+                setIsAdding(false);
+            }
+        } catch (e) {
+            toast.error('Save failed');
+        }
     };
 
     const handleEdit = (item) => {
@@ -46,21 +51,37 @@ const SettingsMenu = () => {
         setFormData(item);
     };
 
-    const handleUpdate = () => {
-        const newItems = menuItems.map(item => item.id === editingId ? { ...formData } : item);
-        setMenuItems(newItems);
-        saveToStorage(newItems);
-        setEditingId(null);
-        setFormData({ label: '', path: '', id: '' });
-        toast.success('Menu item updated');
+    const handleUpdate = async () => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/menu`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            if (res.ok) {
+                toast.success('Menu item updated in DB');
+                fetchMenu();
+                setEditingId(null);
+                setFormData({ label: '', path: '', id: '' });
+            }
+        } catch (e) {
+            toast.error('Update failed');
+        }
     };
 
-    const handleDelete = (id) => {
-        if (menuItems.find(i => i.id === id)?.default) return toast.error('Cannot delete default menu item');
-        const newItems = menuItems.filter(item => item.id !== id);
-        setMenuItems(newItems);
-        saveToStorage(newItems);
-        toast.success('Menu item removed');
+    const handleDelete = async (id) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/menu/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                toast.success('Menu item removed from DB');
+                fetchMenu();
+            } else {
+                const data = await res.json();
+                toast.error(data.error || 'Delete failed');
+            }
+        } catch (e) {
+            toast.error('Error connecting to server');
+        }
     };
 
     return (
@@ -70,7 +91,7 @@ const SettingsMenu = () => {
                     <h2 className="text-xl font-bold text-white">Menu Customization</h2>
                     <p className="text-zinc-400 text-sm">Organize your dashboard layout and navigation.</p>
                 </div>
-                <button 
+                <button
                     onClick={() => setIsAdding(true)}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center gap-2 text-sm font-bold transition-all"
                 >
@@ -81,17 +102,17 @@ const SettingsMenu = () => {
             <div className="space-y-3">
                 {isAdding && (
                     <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg flex gap-4 animate-in slide-in-from-right-4">
-                        <input 
-                            className="bg-zinc-900 border border-white/10 rounded p-2 text-sm flex-1" 
-                            placeholder="Label (e.g. Analytics)" 
+                        <input
+                            className="bg-zinc-900 border border-white/10 rounded p-2 text-sm flex-1"
+                            placeholder="Label (e.g. Analytics)"
                             value={formData.label}
-                            onChange={e => setFormData({...formData, label: e.target.value})}
+                            onChange={e => setFormData({ ...formData, label: e.target.value })}
                         />
-                        <input 
-                            className="bg-zinc-900 border border-white/10 rounded p-2 text-sm flex-1" 
-                            placeholder="Path (e.g. /analytics)" 
+                        <input
+                            className="bg-zinc-900 border border-white/10 rounded p-2 text-sm flex-1"
+                            placeholder="Path (e.g. /analytics)"
                             value={formData.path}
-                            onChange={e => setFormData({...formData, path: e.target.value})}
+                            onChange={e => setFormData({ ...formData, path: e.target.value })}
                         />
                         <button onClick={handleAdd} className="bg-blue-600 px-4 rounded text-white font-bold"><Save size={16} /></button>
                         <button onClick={() => setIsAdding(false)} className="text-zinc-400"><X size={16} /></button>
@@ -102,15 +123,15 @@ const SettingsMenu = () => {
                     <div key={item.id} className="p-4 bg-zinc-900/50 border border-zinc-700/50 rounded-lg flex items-center justify-between group">
                         {editingId === item.id ? (
                             <div className="flex gap-4 w-full">
-                                <input 
-                                    className="bg-zinc-800 border border-white/10 rounded p-1 text-sm flex-1" 
+                                <input
+                                    className="bg-zinc-800 border border-white/10 rounded p-1 text-sm flex-1"
                                     value={formData.label}
-                                    onChange={e => setFormData({...formData, label: e.target.value})}
+                                    onChange={e => setFormData({ ...formData, label: e.target.value })}
                                 />
-                                <input 
-                                    className="bg-zinc-800 border border-white/10 rounded p-1 text-sm flex-1" 
+                                <input
+                                    className="bg-zinc-800 border border-white/10 rounded p-1 text-sm flex-1"
                                     value={formData.path}
-                                    onChange={e => setFormData({...formData, path: e.target.value})}
+                                    onChange={e => setFormData({ ...formData, path: e.target.value })}
                                 />
                                 <button onClick={handleUpdate} className="text-emerald-400"><Save size={18} /></button>
                                 <button onClick={() => setEditingId(null)} className="text-zinc-400"><X size={18} /></button>
@@ -125,7 +146,7 @@ const SettingsMenu = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    {item.default ? (
+                                    {item.is_default ? (
                                         <span className="text-[10px] bg-zinc-800 text-zinc-500 px-2 py-1 rounded uppercase">System</span>
                                     ) : (
                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -140,7 +161,7 @@ const SettingsMenu = () => {
                 ))}
             </div>
 
-            <p className="text-xs text-zinc-500 mt-6 text-center italic">Changes are saved locally. Push to server to sync globally.</p>
+            <p className="text-xs text-zinc-500 mt-6 text-center italic">Changes are saved globally in PostgreSQL database.</p>
         </div>
     );
 };

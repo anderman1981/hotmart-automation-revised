@@ -2,11 +2,35 @@ import axios from 'axios';
 import gitAgent from './GitAgent.js';
 import contentAgent from './ContentAgent.js';
 
+import pg from 'pg';
+const { Pool } = pg;
+
 class ManagerAgent {
     constructor() {
         this.tasks = []; // Queue
+        this.pool = new Pool({
+            user: process.env.DB_USER,
+            host: process.env.DB_HOST,
+            database: process.env.DB_NAME,
+            password: process.env.DB_PASSWORD,
+            port: 5432,
+        });
         // Configured Project Port: 4125
         this.n8nWebhook = process.env.N8N_WEBHOOK_URL || 'http://localhost:4125/webhook/manager-event';
+    }
+
+    async getStrategicKnowledge(query = '') {
+        console.log(`👔 Manager Agent: Searching knowledge base for "${query}"...`);
+        try {
+            const result = await this.pool.query(
+                "SELECT content FROM knowledge_base WHERE content ILIKE $1 OR source ILIKE $1 LIMIT 3",
+                [`%${query}%`]
+            );
+            return result.rows.map(r => r.content).join('\n---\n');
+        } catch (e) {
+            console.error('❌ Strategy Query Failed:', e.message);
+            return '';
+        }
     }
 
     async assignTask(taskType, payload) {

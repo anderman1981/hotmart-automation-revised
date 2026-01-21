@@ -101,8 +101,32 @@ class LearningAgent {
         }
     }
     
-    // Future: Method to digest NotebookLM content 
-    // (NotebookLM doesn't have a public API yet, needs specific strategy or manual export handling)
+    // Ingest text/PDF content
+    async ingest(content, source) {
+        console.log(`🧠 Learning Agent: Ingesting knowledge from ${source}...`);
+        // In a real RAG, this would involve chunking and embeddings.
+        // For now, we return the content to be saved by the orchestrator.
+        return { content, source, length: content.length };
+    }
+
+    async scrapeAndLearn(url) {
+        await this.init();
+        try {
+            console.log(`🧠 Learning Agent: Scraping ${url}...`);
+            await this.page.goto(url, { waitUntil: 'networkidle2' });
+            
+            const content = await this.page.evaluate(() => {
+                // Get main content text
+                return document.body.innerText;
+            });
+            
+            return { content, source: url, length: content.length };
+        } catch (e) {
+            console.error('❌ Scrape Error:', e);
+            throw e;
+        }
+    }
+
     async digestNotebook(url) {
         // Placeholder for NotebookLM logic
         console.log('🧠 Digesting NotebookLM (Simulated): ' + url);
