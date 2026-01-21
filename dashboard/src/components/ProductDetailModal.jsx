@@ -333,7 +333,7 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
                             {/* Action Buttons */}
                             <div className="flex items-center gap-4 pt-6 border-t border-zinc-800">
                                 <a
-                                    href={productDetails.sales_page_url}
+                                    href={productDetails.sales_page_url || productDetails.url_sales_page}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
@@ -342,13 +342,13 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
                                     Ver Página de Ventas
                                 </a>
                                 <a
-                                    href={productDetails.affiliate_url || productDetails.url_sales_page}
+                                    href={productDetails.affiliate_url || productDetails.url_sales_page + '?ref=W949655431L'}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
                                 >
                                     <DollarSign className="w-4 h-4" />
-                                    {productDetails.affiliate_url ? 'Enlace de Afiliado' : 'Ir a Ventas'}
+                                    Enlace de Afiliado
                                 </a>
                             </div>
                         </div>
