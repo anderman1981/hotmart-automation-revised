@@ -492,7 +492,7 @@ app.post('/api/agents/create', async (req, res) => {
     
     // Sanitize
     const safeName = agentName.replace(/[^a-zA-Z0-9]/g, '');
-    const className = safeName.charAt(0).toUpperCase() + safeName.slice(1) + 'Agent';
+    const className = safeName.charAt(0).toUpperCase() + safeName.slice(1);
     const fileName = `${className}.js`;
     const filePath = path.join(__dirname, 'src', 'agents', fileName);
 
