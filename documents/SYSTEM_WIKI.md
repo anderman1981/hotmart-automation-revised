@@ -47,3 +47,9 @@ This document serves as an automated historical registry of all significant acti
 | #20 | Save Knowledge button fails in legacy Agents page (hardcoded port) | Media | Open |
 | N/A | API Keys stored in plain text (encryption pending) | Alta | Backlog |
 | N/A | RAG implementation incomplete (ChromaDB integration pending) | Media | Backlog |
+| 2026-01-21 17:33 | PRODUCTS | Batch Move to Freezer | 1 products moved to freezer | GitAgent |
+| 2026-01-21 17:33 | PRODUCTS | Batch Reactivation | 1 products reactivated from freezer | GitAgent |
+| 2026-01-21 18:31 | PRODUCTS | Batch Move to Freezer | 1 products moved to freezer | GitAgent |
+| 2026-01-21 18:31 | PRODUCTS | Batch Reactivation | 1 products reactivated from freezer | GitAgent |
+| 2026-01-21 18:31 | CORE | System Stop | Manually stopped via API | GitAgent |
+| 2026-01-21 18:31 | CORE | System Start | Manually started via API | GitAgent |
