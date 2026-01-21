@@ -55,16 +55,18 @@ services:
     ports:
       - "5679:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${VP_N8N_USER:-admin}
-      - N8N_BASIC_AUTH_PASSWORD=${VP_N8N_PASSWORD:-admin}
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-false}
+      - N8N_USER_MANAGEMENT_DISABLED=${N8N_USER_MANAGEMENT_DISABLED:-true}
+      - N8N_EMAIL=${VP_N8N_USER:-admin@localhost.com}
+      - N8N_PASSWORD=${VP_N8N_PASSWORD:-admin}
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
+      - N8N_LICENSE_TOKEN=${N8N_LICENSE_TOKEN}
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=db
       - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${VP_DB_NAME:-hotmart}
-      - DB_POSTGRESDB_USER=${VP_DB_USER:-hotmart_user}
-      - DB_POSTGRESDB_PASSWORD=${VP_DB_PASSWORD:-securepassword}
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - DB_POSTGRESDB_DATABASE=${DB_NAME:-hotmart}
+      - DB_POSTGRESDB_USER=${DB_USER:-hotmart_user}
+      - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD:-securepassword}
     depends_on:
       db:
         condition: service_healthy
@@ -79,7 +81,6 @@ services:
     restart: always
     volumes:
       - ./motor:/app
-      - /app/node_modules
       - ./:/repo
     ports:
       - "4123:4123"
@@ -104,6 +105,7 @@ services:
       - INSTAGRAM_USER=${INSTAGRAM_USER}
       - INSTAGRAM_PASSWORD=${INSTAGRAM_PASSWORD}
       - GIT_REPO_PATH=/repo
+      - OLLAMA_HOST=http://ollama:11434
 
   dashboard:
     build: ./dashboard

@@ -1,0 +1,122 @@
+{
+  "name": "ANTIGRAVITY_FULL_AUTO_LOOP",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 6,
+              "unit": "hours"
+            }
+          ]
+        }
+      },
+      "name": "CRON_LOOP",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://motor:4123/api/manager/run",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{ \"mode\": \"FULL_AUTO\" }"
+      },
+      "name": "RUN_MANAGER_AGENT",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://motor:4123/api/instagram/publish",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "{ \"source\": \"manager\" }"
+      },
+      "name": "INSTAGRAM_PUBLISH",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://motor:4123/api/metrics/collect",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "name": "COLLECT_METRICS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://motor:4123/api/metrics/feedback",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "name": "FEEDBACK_LOOP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "CRON_LOOP": {
+      "main": [
+        [
+          {
+            "node": "RUN_MANAGER_AGENT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RUN_MANAGER_AGENT": {
+      "main": [
+        [
+          {
+            "node": "INSTAGRAM_PUBLISH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "INSTAGRAM_PUBLISH": {
+      "main": [
+        [
+          {
+            "node": "COLLECT_METRICS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "COLLECT_METRICS": {
+      "main": [
+        [
+          {
+            "node": "FEEDBACK_LOOP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

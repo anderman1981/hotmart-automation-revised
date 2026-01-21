@@ -1,0 +1,31 @@
+{
+  "name": "ANTIGRAVITY_SCALE_WINNERS",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [{ "mode": "everyX", "value": 48, "unit": "hours" }]
+        }
+      },
+      "name": "CRON_SCALE",
+      "type": "n8n-nodes-base.cron",
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/manager/scale",
+        "method": "POST",
+        "jsonParameters": true
+      },
+      "name": "SCALE",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 300]
+    }
+  ],
+  "connections": {
+    "CRON_SCALE": {
+      "main": [[{ "node": "SCALE", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false
+}

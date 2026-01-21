@@ -1,0 +1,42 @@
+{
+  "name": "ANTIGRAVITY_KILL_SWITCH",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [{ "mode": "everyX", "value": 1, "unit": "hours" }]
+        }
+      },
+      "name": "CRON_MONITOR",
+      "type": "n8n-nodes-base.cron",
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/system/health",
+        "method": "GET"
+      },
+      "name": "CHECK_HEALTH",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/system/stop",
+        "method": "POST"
+      },
+      "name": "STOP_ALL",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [700, 300]
+    }
+  ],
+  "connections": {
+    "CRON_MONITOR": {
+      "main": [[{ "node": "CHECK_HEALTH", "type": "main", "index": 0 }]]
+    },
+    "CHECK_HEALTH": {
+      "main": [[{ "node": "STOP_ALL", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false
+}

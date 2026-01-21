@@ -1,68 +1,58 @@
 # 📊 Strategic Analysis: Hotmart Automation Ecosystem
-**Version:** 1.1 (Stable Dev)  
+**Version:** 1.2 (Agent Forge Integration)  
 **Date:** 2026-01-20  
-**Project:** hotmart-automation-revised
+**Project:** hotmart-automation
 
 ---
 
 ## 🚀 1. Executive Summary
-This project is an advanced **Automated Affiliate Marketing Ecosystem** designed to identify, track, and scale sales for Hotmart products using distributed AI Agents. Unlike traditional bots, this system uses a **Bayesian Decision Engine** to prioritize products with the highest probability of success based on real-time data ingestion.
+This project has evolved into an **Autonomous Agent Operating System (Agent Forge)** specifically tailored for the Affiliate Marketing industry. By integrating local-first LLM orchestration (Ollama), a Bayesian Decision Engine, and persistent strategic ingestion, the system identifies, creates, and scales high-converting campaigns with minimal human intervention.
 
 ---
 
-## 🏗️ 2. Technical Architecture & Distributed IQ
-The system is divided into specialized modules (Agents) that operate autonomously or under the supervision of a **Manager Agent**.
+## 🏗️ 2. The "Agent Forge" Architecture
+Moving beyond simple scripts, the system now adopts a modular, kernel-driven architecture based on high-level strategic research (ingested from LLM Open Source tactical documentation).
 
-### Core Components:
-- **Motor (Backend - 4123):** Node.js Bayesian engine, Redis for real-time task queuing, PostgreSQL for persistent storage.
-- **Dashboard (Frontend - 4124):** Vite/React interface for real-time monitoring, agent control, and configuration.
-- **Automation Layer (5679):** N8N orchestration for webhooks and external integrations.
-- **AI Infrastructure (11434):** Local Ollama instance for content generation and semantic research.
+### Core Layers:
+- **Neural Bus (ManagerAgent):** A "Control Kernel" that coordinates four operational modes: Direct, Objective, Event-driven, and Hybrid.
+- **Knowledge Core (LearningAgent):** Persistent RAG (Retrieval-Augmented Generation) using PostgreSQL. Capable of digesting PDFs, URLs, and Manual input to fuel content strategy.
+- **Action Bus:** Standardized connectors for n8n, Social Media APIs, and Git-based documentation.
+- **Persistence Layer:** All system settings (Menu, API Keys, Data Sources, Knowledge) are stored in PostgreSQL for zero-loss recovery.
 
-### Specialized Agents:
-1.  **DetectorAgent:** Scans Hotmart market to discover "hidden gems."
-2.  **AssetsAgent:** Extracts marketing materials (creative) from sales pages.
-3.  **ContentAgent:** Generates original copy and image prompts via LLMs.
-4.  **InstagramAgent:** Handles social distribution and community interaction.
-5.  **LearningAgent:** Ingests documentation and tutorials to improve system strategies.
-6.  **GitAgent:** Manages project versioning and automated documentation (Wiki).
-7.  **ManagerAgent:** The "Brain" that wakes up and assigns tasks to other agents based on system load and priority.
-
----
-
-## 📈 3. Current Implementation State (v1.1)
-- [x] **Standardization:** All ports (4123, 4124) and environments are strictly documented.
-- [x] **Dynamic Configuration:** Interactive UI to manage menus, data sources, and API keys.
-- [x] **Agent Scaffolding:** Ability to spawn new specialized agents from the dashboard.
-- [x] **Living Documentation:** Automated Wiki system registers every system action via Git.
-- [x] **Bayesian Engine:** Core logic for scoring products based on sales/clicks is implemented in the backend.
+### Specialized Agent Swarm:
+1.  **DetectorAgent:** Market discovery and product sentiment analysis.
+2.  **AssetsAgent:** Multi-modal extraction of sales materials.
+3.  **ContentAgent:** Persona-based creative generation.
+4.  **LearningAgent:** Strategic digestion of academy materials and PDF intel.
+5.  **GitAgent:** Automated devops and activity registry (Wiki).
+6.  **ManagerAgent:** Orchestrator ensuring system health and autonomous wake signals.
 
 ---
 
-## 🎯 4. Business Strategy: "The Loop"
-1.  **Ingestion:** Detector finds products.
-2.  **Scoring:** Bayesian engine calculates "Mean Prob" of conversion.
-3.  **Creation:** Content agent builds a campaign for winners.
-4.  **Distribution:** Instagram/Social agents post and track engagement.
-5.  **Feedback:** Sales data fuels the Bayesian engine, closing the loop.
+## 📈 3. Current Implementation State (v1.2)
+- [x] **Full DB Persistence:** Dynamic configuration of the entire ecosystem via PostgreSQL.
+- [x] **PDF & Multi-format Ingestion:** System can now learn from tactical documents (e.g., "Librerías LLM Open Source").
+- [x] **Premium Dashboard UI:** Enhanced monitoring with real-time resource tracking and ingestion controls.
+- [x] **Bayesian Ingestion Loop:** Sales and click data directly influence product scoring.
+- [x] **Automated Wiki:** Every tactical shift is recorded in the `SYSTEM_WIKI.md`.
 
 ---
 
-## ⚠️ 5. Gap Analysis (What is Missing?)
-1.  **Real-World API Connectors:** The system is prepared for APIs but currently uses several "Mock" endpoints for external platform communication.
-2.  **Advanced Ingestion (OCR/Video):** The Learning Agent needs full implementation of video ingestion (OCR from tutorials) to extract strategies.
-3.  **Autonomous Manager Logic:** The Manager Agent needs more complex decision-making trees to operationally wake up agents without manual intervention.
-4.  **Predictive Scaling:** Integration of budget management (investment vs. ROI) for paid traffic automation.
+## 🎯 4. Business Strategy: "The Autonomy Loop"
+1.  **Ingestion:** LearningAgent processes strategic PDFs/Blogs to update marketing "Blueprints."
+2.  **Discovery:** DetectorAgent finds products aligned with current "Blueprints."
+3.  **Validation:** Bayesian Engine scores products based on historical and market data.
+4.  **Execution:** ManagerAgent wakes up Content/Instagram agents to fulfill the goal.
+5.  **Profitability:** Continuous operation on local hardware minimizes OpEx, maximizing margins.
 
 ---
 
-## ❓ 6. Strategic Validation Questions for ChatGPT
-1.  **Efficiency:** Is the Bayesian approach sufficient for the volatility of the Hotmart market, or should we integrate Reinforcement Learning?
-2.  **Scalability:** How can the system handle 100+ concurrent products without hitting rate limits on social APIs?
-3.  **Monetization:** Besides affiliate commissions, could this "Agent as a Service" (AaaS) model be pivoted for product creators?
-4.  **Security:** What's the best way to handle persistent API sessions for Instagram without triggering bot-detection security?
+## ⚠️ 5. Next Strategic Milestones
+1.  **Deep RAG Integration:** Connecting the Knowledge Base directly to the ContentAgent for more specialized copies.
+2.  **Multimodal Vision Integration:** Allowing agents to "see" and evaluate the visual quality of sales pages.
+3.  **Real-Time API Hardening:** Moving from mock connections to production-ready social media integrations.
 
 ---
 
 **Generated by Antigravity AI Agent**  
-*Strategic Ally for Hotmart Automation.*
+*Empowering the Agent Forge Ecosystem.*

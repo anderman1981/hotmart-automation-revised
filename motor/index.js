@@ -1,11 +1,16 @@
 import 'dotenv/config';
 import express from 'express';
+import cors from 'cors';
 import pg from 'pg';
 const { Pool } = pg;
 import { createClient } from 'redis';
-import cors from 'cors';
+import redis from 'redis';
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
+const multiparty = require('multiparty');
 import { fileURLToPath } from 'url';
 import cron from 'node-cron';
 
@@ -331,18 +336,180 @@ app.post('/api/agents/:name/start', async (req, res) => {
     }
 });
 
-// Mock Menu Settings
-app.get('/api/settings/menu', (req, res) => {
-    res.json({
-        menu: [
-            { id: 'dashboard', label: 'Dashboard', path: '/', default: true },
-            { id: 'products', label: 'Products', path: '/products' },
-            { id: 'agents', label: 'Agents', path: '/agents' }
-        ]
-    });
+// --- PERSISTENT SETTINGS API ---
+
+// Menu Management
+app.get('/api/settings/menu', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM system_menu ORDER BY sort_order ASC');
+        res.json({ menu: result.rows });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
-// Data Ingestion Endpoint
+app.post('/api/settings/menu', async (req, res) => {
+    const { id, label, path, sort_order } = req.body;
+    try {
+        await pool.query(
+            `INSERT INTO system_menu (id, label, path, sort_order) 
+             VALUES ($1, $2, $3, $4) 
+             ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, path = EXCLUDED.path, sort_order = EXCLUDED.sort_order`,
+            [id, label, path, sort_order || 0]
+        );
+        gitAgent.updateWiki('SETTINGS', 'Menu Updated', `Modified menu item: ${label}`);
+        res.json({ status: 'success' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/settings/menu/:id', async (req, res) => {
+    try {
+        const check = await pool.query('SELECT is_default FROM system_menu WHERE id = $1', [req.params.id]);
+        if (check.rows[0]?.is_default) return res.status(403).json({ error: 'Cannot delete default menu' });
+        
+        await pool.query('DELETE FROM system_menu WHERE id = $1', [req.params.id]);
+        gitAgent.updateWiki('SETTINGS', 'Menu Deleted', `Removed menu item: ${req.params.id}`);
+        res.json({ status: 'success' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// API Keys Management
+app.get('/api/settings/keys', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, name, platform, encrypted_key as key, is_active FROM api_keys ORDER BY created_at DESC');
+        res.json({ keys: result.rows });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/settings/keys', async (req, res) => {
+    const { name, platform, key } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO api_keys (name, platform, encrypted_key) VALUES ($1, $2, $3) RETURNING id',
+            [name, platform, key]
+        );
+        gitAgent.updateWiki('SECURITY', 'API Key Added', `Registered key for ${platform}`);
+        res.json({ status: 'success', id: result.rows[0].id });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/settings/keys/:id', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM api_keys WHERE id = $1', [req.params.id]);
+        gitAgent.updateWiki('SECURITY', 'API Key Deleted', `Removed API key ID: ${req.params.id}`);
+        res.json({ status: 'success' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Data Sources Management
+app.get('/api/settings/sources', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM data_sources ORDER BY created_at DESC');
+        res.json({ sources: result.rows });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/settings/sources', async (req, res) => {
+    const { name, description, type } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO data_sources (name, description, type) VALUES ($1, $2, $3) RETURNING id',
+            [name, description, type]
+        );
+        gitAgent.updateWiki('DATA', 'Source Connected', `Linked knowledge source: ${name}`);
+        res.json({ status: 'success', id: result.rows[0].id });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/settings/sources/:id', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM data_sources WHERE id = $1', [req.params.id]);
+        gitAgent.updateWiki('DATA', 'Source Disconnected', `Removed source ID: ${req.params.id}`);
+        res.json({ status: 'success' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Data Ingestion Endpoint (Supports Links, Text, and PDF)
+app.post('/api/ingest', async (req, res) => {
+    const contentType = req.headers['content-type'] || '';
+
+    if (contentType.includes('multipart/form-data')) {
+        const form = new multiparty.Form();
+        form.parse(req, async (err, fields, files) => {
+            if (err) return res.status(500).json({ error: 'Form parse error' });
+            
+            const file = files.file ? files.file[0] : null;
+            if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+            try {
+                const dataBuffer = fs.readFileSync(file.path);
+                let content = "";
+
+                if (file.originalFilename.endsWith('.pdf')) {
+                    const data = await pdf(dataBuffer);
+                    content = data.text;
+                } else {
+                    content = dataBuffer.toString();
+                }
+
+                const result = await learningAgent.ingest(content, `File: ${file.originalFilename}`);
+                
+                // Save to Knowledge Base Table
+                await pool.query(
+                    'INSERT INTO knowledge_base (source, content, tags) VALUES ($1, $2, $3)',
+                    [result.source, result.content, JSON.stringify({ filename: file.originalFilename, type: 'pdf' })]
+                );
+
+                gitAgent.updateWiki('INGESTION', 'File Ingested', `Processed: ${file.originalFilename} (${content.length} chars)`);
+                res.json({ status: 'success', msg: 'File processed and saved to DB' });
+            } catch (e) {
+                res.status(500).json({ error: e.message });
+            }
+        });
+        return;
+    }
+
+    // JSON Logic (URLs or Plain Text)
+    const { url, text, source } = req.body;
+    try {
+        if (url) {
+            const result = await learningAgent.scrapeAndLearn(url);
+            await pool.query(
+                'INSERT INTO knowledge_base (source, content, tags) VALUES ($1, $2, $3)',
+                [result.source, result.content, JSON.stringify({ type: 'url' })]
+            );
+            gitAgent.updateWiki('INGESTION', 'URL Ingested', `Learned from: ${url}`);
+        } else if (text) {
+            const result = await learningAgent.ingest(text, source || 'Manual');
+            await pool.query(
+                'INSERT INTO knowledge_base (source, content, tags) VALUES ($1, $2, $3)',
+                [result.source, result.content, JSON.stringify({ type: 'manual' })]
+            );
+            gitAgent.updateWiki('INGESTION', 'Text Ingested', `Manual input added`);
+        }
+        res.json({ status: 'success' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Legacy queue endpoint (keep for compatibility if needed)
 app.post('/api/agents/:agent/data', (req, res) => {
     const { agent } = req.params;
     const { type, filename } = req.body;

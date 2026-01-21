@@ -1,29 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Key, Plus, Trash2, Edit3, Save, X, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 const SettingsAPI = () => {
-    const [keys, setKeys] = useState([
-        { id: 1, name: 'Hotmart API v2', platform: 'Hotmart', key: 'HM-••••••••••••••••', active: true },
-        { id: 2, name: 'Instagram Graph', platform: 'Facebook', key: 'EAAC••••••••••••••••', active: true },
-        { id: 3, name: 'Ollama Local Host', platform: 'Local AI', key: 'http://localhost:11434', active: true }
-    ]);
+    const [keys, setKeys] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchKeys = async () => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/keys`);
+            const data = await res.json();
+            if (data.keys) setKeys(data.keys);
+        } catch (e) {
+            toast.error('Failed to load API keys');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchKeys();
+    }, []);
 
     const [isAdding, setIsAdding] = useState(false);
     const [newKey, setNewKey] = useState({ name: '', platform: '', key: '' });
     const [showKey, setShowKey] = useState({});
 
-    const handleAdd = () => {
+    const handleAdd = async () => {
         if (!newKey.name || !newKey.key) return toast.error('Name and Key are required');
-        setKeys([...keys, { ...newKey, id: Date.now(), active: true }]);
-        setNewKey({ name: '', platform: '', key: '' });
-        setIsAdding(false);
-        toast.success('API Key added successfully');
+
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/keys`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newKey)
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                toast.success('API Key added and persistent');
+                fetchKeys();
+                setNewKey({ name: '', platform: '', key: '' });
+                setIsAdding(false);
+            }
+        } catch (e) {
+            toast.error('Error saving API key');
+        }
     };
 
-    const handleDelete = (id) => {
-        setKeys(keys.filter(k => k.id !== id));
-        toast.success('API Key deleted');
+    const handleDelete = async (id) => {
+        try {
+            await fetch(`${import.meta.env.VITE_API_URL}/api/settings/keys/${id}`, { method: 'DELETE' });
+            toast.success('API Key deleted from DB');
+            fetchKeys();
+        } catch (e) {
+            toast.error('Delete failed');
+        }
     };
 
     const toggleShow = (id) => {
