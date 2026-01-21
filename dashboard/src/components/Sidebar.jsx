@@ -1,9 +1,25 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Package, Bot, Settings, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 
 const Sidebar = () => {
+    const [branchName, setBranchName] = useState('...');
+
+    useEffect(() => {
+        const fetchBranch = async () => {
+            try {
+                const res = await fetch(import.meta.env.VITE_API_URL + '/api/git/status');
+                const data = await res.json();
+                if (data.current) setBranchName(data.current);
+            } catch (e) {
+                console.error("Failed to fetch branch status", e);
+                setBranchName('offline');
+            }
+        };
+        fetchBranch();
+    }, []);
+
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
         { icon: Package, label: 'Products', path: '/productos' }, // Fixed path
@@ -58,7 +74,9 @@ const Sidebar = () => {
                         </div>
                         <div>
                             <p className="text-xs font-semibold text-zinc-300">System Active</p>
-                            <p className="text-[10px] text-zinc-500 font-mono">Branch: <span className="text-emerald-400">dev</span></p>
+                            <p className="text-[10px] text-zinc-500 font-mono">
+                                Branch: <span className="text-emerald-400 truncate max-w-[100px] inline-block align-bottom" title={branchName}>{branchName}</span>
+                            </p>
                         </div>
                     </div>
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse"></div>
