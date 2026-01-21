@@ -23,3 +23,5 @@ This document serves as an automated historical registry of all significant acti
 | 2026-01-21 04:06 | CORE | System Start | Manually started via API | GitAgent |
 | 2026-01-21 04:06 | CORE | System Stop | Manually stopped via API | GitAgent |
 | 2026-01-21 04:06 | CORE | System Start | Manually started via API | GitAgent |
+| 2026-01-21 05:05 | DATA | Source Connected | Linked knowledge source: Github | GitAgent |
+| 2026-01-21 05:06 | DATA | Source Connected | Linked knowledge source: Hotmart | GitAgent |
