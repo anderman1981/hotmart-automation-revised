@@ -1,0 +1,130 @@
+version: '3.9'
+
+services:
+
+  db:
+    image: postgres:15
+    container_name: hotmart_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${VP_DB_USER:-hotmart_user}
+      POSTGRES_PASSWORD: ${VP_DB_PASSWORD:-securepassword}
+      POSTGRES_DB: ${VP_DB_NAME:-hotmart}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./motor/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hotmart_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${VP_DB_USER:-hotmart_user} -d ${VP_DB_NAME:-hotmart}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: hotmart_redis
+    restart: always
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - hotmart_net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hotmart_ollama
+    restart: unless-stopped
+    volumes:
+      - ./models:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - hotmart_net
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+
+  n8n:
+    image: n8nio/n8n
+    container_name: hotmart_n8n
+    restart: always
+    ports:
+      - "5679:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${VP_N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${VP_N8N_PASSWORD:-admin}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${VP_DB_NAME:-hotmart}
+      - DB_POSTGRESDB_USER=${VP_DB_USER:-hotmart_user}
+      - DB_POSTGRESDB_PASSWORD=${VP_DB_PASSWORD:-securepassword}
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - hotmart_net
+
+  motor:
+    build: ./motor
+    container_name: hotmart_motor
+    restart: always
+    volumes:
+      - ./motor:/app
+      - /app/node_modules
+      - ./:/repo
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - hotmart_net
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      - DB_USER=${VP_DB_USER:-hotmart_user}
+      - DB_PASSWORD=${VP_DB_PASSWORD:-securepassword}
+      - DB_NAME=${VP_DB_NAME:-hotmart}
+      - HOTMART_EMAIL=${HOTMART_EMAIL}
+      - HOTMART_PASSWORD=${HOTMART_PASSWORD}
+      - INSTAGRAM_USER=${INSTAGRAM_USER}
+      - INSTAGRAM_PASSWORD=${INSTAGRAM_PASSWORD}
+      - GIT_REPO_PATH=/repo
+
+
+  dashboard:
+    build: ./dashboard
+    container_name: hotmart_dashboard
+    restart: always
+    ports:
+      - "4004:4004"
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:4000
+    depends_on:
+      - motor
+    networks:
+      - hotmart_net
+
+networks:
+  hotmart_net:
+    driver: bridge
+
+volumes:
+  n8n_data:

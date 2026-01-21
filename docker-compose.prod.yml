@@ -1,0 +1,118 @@
+version: '3.9'
+
+services:
+  # Main Infrastructure (Prod DB)
+  db:
+    image: postgres:15
+    container_name: hotmart_main_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${VP_DB_USER:-hotmart_user}
+      POSTGRES_PASSWORD: ${VP_DB_PASSWORD:-securepassword}
+      POSTGRES_DB: ${VP_DB_NAME:-hotmart}
+    volumes:
+      - ./data/postgres_main:/var/lib/postgresql/data
+      - ./motor/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hotmart_main_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${VP_DB_USER:-hotmart_user} -d ${VP_DB_NAME:-hotmart}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: hotmart_main_redis
+    restart: always
+    volumes:
+      - ./data/redis_main:/data
+    networks:
+      - hotmart_main_net
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hotmart_main_ollama
+    restart: unless-stopped
+    volumes:
+      - ./models:/root/.ollama
+    ports:
+      - "4226:11434"
+    networks:
+      - hotmart_main_net
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+
+  n8n:
+    image: n8nio/n8n
+    container_name: hotmart_main_n8n
+    restart: always
+    ports:
+      - "4225:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${VP_N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${VP_N8N_PASSWORD:-admin}
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${VP_DB_NAME:-hotmart}
+      - DB_POSTGRESDB_USER=${VP_DB_USER:-hotmart_user}
+      - DB_POSTGRESDB_PASSWORD=${VP_DB_PASSWORD:-securepassword}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - n8n_data_main:/home/node/.n8n
+    networks:
+      - hotmart_main_net
+
+  motor:
+    build: ./motor
+    container_name: hotmart_main_motor
+    restart: always
+    ports:
+      - "4223:4223"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ollama:
+        condition: service_started
+    networks:
+      - hotmart_main_net
+    environment:
+      - NODE_ENV=production
+      - PORT=4223
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      - DB_NAME=${VP_DB_NAME:-hotmart}
+      - DB_USER=${VP_DB_USER:-hotmart_user}
+      - DB_PASSWORD=${VP_DB_PASSWORD:-securepassword}
+      - OLLAMA_HOST=http://ollama:11434
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile # Produciton build logic needs to be verified or update Dockerfile to support build stage
+    container_name: hotmart_main_dashboard
+    restart: always
+    ports:
+      - "4224:4224"
+    environment:
+      - VITE_API_URL=http://localhost:4223
+    depends_on:
+      - motor
+    networks:
+      - hotmart_main_net
+    # For now, reusing the dev start since we don't have an Nginx setup in Dockerfile yet. 
+    # Ideal next step: Multi-stage Dockerfile for dashboard.
+    command: npm run dev -- --host --port 4224
+
+networks:
+  hotmart_main_net:
+    driver: bridge
+
+volumes:
+  n8n_data_main:
