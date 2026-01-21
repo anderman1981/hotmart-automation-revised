@@ -101,6 +101,7 @@ app.post('/api/system/start', (req, res) => {
     SYSTEM_ACTIVE = true;
     // Logic to restart agents could go here
     console.log('🟢 SYSTEM STARTED');
+    gitAgent.updateWiki('CORE', 'System Start', 'Manually started via API');
     res.json({ status: 'success', msg: 'System Started' });
 });
 
@@ -114,6 +115,7 @@ app.post('/api/system/stop', async (req, res) => {
             instagramAgent.stop(),
             learningAgent.stop()
         ]);
+        gitAgent.updateWiki('CORE', 'System Stop', 'Manually stopped via API');
         res.json({ status: 'success', msg: 'System Stopped & Agents Halted' });
     } catch (e) {
         res.status(500).json({ status: 'error', error: e.message });
@@ -136,6 +138,7 @@ app.post('/api/products', async (req, res) => {
       `INSERT INTO product_scores (product_id) VALUES ($1)`,
       [result.rows[0].id]
     );
+    gitAgent.updateWiki('MARKET', 'Product Tracked', `New product: ${name} (${hotmart_id})`);
     res.status(201).json({ id: result.rows[0].id, msg: 'Product tracked' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -515,6 +518,7 @@ export default new ${className}();
             return res.status(400).json({ error: 'Agent already exists' });
         }
         fs.writeFileSync(filePath, template);
+        gitAgent.updateWiki('AGENTS', 'Agent Created', `New agent scaffolded: ${className}`);
         res.json({ status: 'created', path: filePath, msg: 'Please restart container to load new agent' });
     } catch (e) {
         res.status(500).json({ error: e.message });

@@ -1,10 +1,17 @@
 import simpleGit from 'simple-git';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class GitAgent {
-    constructor(basePath = process.env.GIT_REPO_PATH || process.cwd()) {
-        this.git = simpleGit(basePath);
-        this.basePath = basePath;
-        console.log('🤖 Git Agent: Initialized at ' + basePath);
+    constructor() {
+        // Prioritize environment variable, then auto-resolve
+        this.basePath = process.env.GIT_REPO_PATH || path.resolve(__dirname, '..', '..', '..');
+        this.git = simpleGit(this.basePath);
+        console.log('🤖 Git Agent: Initialized at ' + this.basePath);
     }
 
     async init() {
@@ -90,6 +97,27 @@ class GitAgent {
             };
         } catch (e) {
             return { current: 'unknown', error: e.message };
+        }
+    }
+    
+    async updateWiki(category, action, details) {
+        const wikiPath = path.join(this.basePath, 'documents', 'SYSTEM_WIKI.md');
+        const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const logEntry = `| ${timestamp} | ${category} | ${action} | ${details} | GitAgent |\n`;
+        
+        try {
+            if (!fs.existsSync(wikiPath)) {
+                console.error('❌ Wiki file not found');
+                return;
+            }
+            
+            fs.appendFileSync(wikiPath, logEntry);
+            console.log(`📝 Wiki Updated: ${action}`);
+            
+            // Auto-commit documentation updates
+            await this.autoCommit(`Docs: Updated Wiki with ${action}`);
+        } catch (e) {
+            console.error('❌ Wiki Update Error:', e.message);
         }
     }
 }
