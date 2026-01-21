@@ -233,6 +233,7 @@ import contentAgent from './src/agents/ContentAgent.js';
 import assetsAgent from './src/agents/AssetsAgent.js';
 import gitAgent from './src/agents/GitAgent.js';
 import learningAgent from './src/agents/LearningAgent.js';
+import managerAgent from './src/agents/ManagerAgent.js';
 
 // Init Agents
 (async () => {
@@ -331,6 +332,17 @@ app.post('/api/agents/:name/start', async (req, res) => {
         } else {
             res.status(400).json({ status: 'failed', error: 'Agent could not be woken or does not support auto-wake.' });
         }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Manager Agent: Summarize Latest Knowledge
+app.get('/api/agents/manager/summarize', async (req, res) => {
+    try {
+        console.log('🧠 API: Requesting Manager Agent to summarize latest knowledge...');
+        const summary = await managerAgent.summarizeLatestKnowledge();
+        res.json({ status: 'success', summary });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -516,10 +528,6 @@ app.post('/api/agents/:agent/data', (req, res) => {
     console.log(`📂 Data received for ${agent}: ${filename} (${type})`);
     res.json({ status: 'success', msg: 'File queued for processing' });
 });
-
-import managerAgent from './src/agents/ManagerAgent.js';
-
-// ...
 
 // Trigger Manager Task
 app.post('/api/agents/manager/task', async (req, res) => {

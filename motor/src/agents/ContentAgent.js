@@ -6,7 +6,7 @@ class ContentAgent {
         // Configured Project Port: 11434
         const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
         this.ollama = new Ollama({ host });
-        this.model = process.env.OLLAMA_MODEL || 'llama3.2:latest'; // Using active model
+        this.model = process.env.OLLAMA_MODEL || 'llama3:latest'; // Using active model
     }
 
     async generateMarketingPost(productName, niche) {

@@ -23,13 +23,56 @@ class ManagerAgent {
         console.log(`👔 Manager Agent: Searching knowledge base for "${query}"...`);
         try {
             const result = await this.pool.query(
-                "SELECT content FROM knowledge_base WHERE content ILIKE $1 OR source ILIKE $1 LIMIT 3",
+                "SELECT content FROM knowledge_base WHERE content ILIKE $1 OR source ILIKE $1 ORDER BY created_at DESC LIMIT 3",
                 [`%${query}%`]
             );
             return result.rows.map(r => r.content).join('\n---\n');
         } catch (e) {
             console.error('❌ Strategy Query Failed:', e.message);
             return '';
+        }
+    }
+
+    async summarizeLatestKnowledge() {
+        console.log('👔 Manager Agent: Analyzing latest knowledge received...');
+        try {
+            // 1. Get the latest ingested material
+            const res = await this.pool.query(
+                "SELECT source, content FROM knowledge_base ORDER BY created_at DESC LIMIT 1"
+            );
+
+            if (res.rows.length === 0) return "No hay materia nueva para aprender.";
+
+            const { source, content } = res.rows[0];
+            const snippet = content.slice(0, 3000); // Limit context
+
+            // 2. Ask LLM via ContentAgent
+            const prompt = `
+            Actúa como el Manager Agent del sistema.
+            Acabas de recibir un nuevo archivo de entrenamiento: "${source}".
+            Aquí tienes un extracto del contenido:
+            ---
+            ${snippet}
+            ---
+            
+            Tareas:
+            1. Resume en 3 puntos clave qué aprendiste de este archivo.
+            2. Explica cómo esto mejora tu capacidad para gestionar el sistema.
+            3. Responde en ESPAÑOL con un tono profesional y ejecutivo.
+            `;
+
+            const response = await contentAgent.ollama.chat({
+                model: contentAgent.model,
+                messages: [{ role: 'user', content: prompt }],
+            });
+
+            return {
+                source,
+                summary: response.message.content
+            };
+        } catch (e) {
+            console.error('❌ Summary Failed:', e.message);
+            return { error: e.message };
         }
     }
 
