@@ -120,33 +120,38 @@ const Agents = () => {
 
                 {/* Sidebar Agents List */}
                 <div className="space-y-4">
-                    <AgentCard
-                        icon={<Instagram />}
-                        title="Redes Sociales"
-                        desc="Gestión automática de Instagram"
-                        active={activeTab === 'instagram'}
-                        onClick={() => { setActiveTab('instagram'); setViewMode('actions'); }}
-                    />
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
+                        <h3 className="text-blue-400 font-bold text-sm mb-2 flex items-center gap-2">
+                            <Database size={16} /> Agentes Entrenables
+                        </h3>
+                        <p className="text-zinc-400 text-xs">
+                            Estos agentes mejoran con conocimiento externo. Los demás (Git, Detector, Manager) ya tienen sus reglas definidas.
+                        </p>
+                    </div>
+
                     <AgentCard
                         icon={<PenTool />}
                         title="Contenido IA"
-                        desc="Generador de Copy & Prompts"
+                        desc="Copy, hooks, frameworks de copywriting"
+                        tooltip="Pega ejemplos de copy viral, frameworks probados, hooks que funcionan"
                         active={activeTab === 'content'}
                         onClick={() => { setActiveTab('content'); setViewMode('actions'); }}
                     />
                     <AgentCard
-                        icon={<Image />}
-                        title="Espía Visual"
-                        desc="Extractor de Creativos & Drive"
-                        active={activeTab === 'visual'}
-                        onClick={() => { setActiveTab('visual'); setViewMode('actions'); }}
+                        icon={<Instagram />}
+                        title="Redes Sociales"
+                        desc="Estrategias de engagement y hashtags"
+                        tooltip="Mejores horarios, hashtags efectivos, tipos de contenido que generan engagement"
+                        active={activeTab === 'instagram'}
+                        onClick={() => { setActiveTab('instagram'); setViewMode('actions'); }}
                     />
                     <AgentCard
-                        icon={<Terminal />}
-                        title="Git Manager"
-                        desc="Control de Versiones & DevOps"
-                        active={activeTab === 'git'}
-                        onClick={() => { setActiveTab('git'); setViewMode('actions'); }}
+                        icon={<Image />}
+                        title="Espía Visual"
+                        desc="Patrones de diseño y creativos"
+                        tooltip="Paletas de colores, estilos visuales, tipos de imágenes que convierten"
+                        active={activeTab === 'visual'}
+                        onClick={() => { setActiveTab('visual'); setViewMode('actions'); }}
                     />
                 </div>
 
@@ -293,21 +298,6 @@ const Agents = () => {
                                             )}
                                         </div>
                                     )}
-
-                                    {activeTab === 'git' && (
-                                        <div className="space-y-6">
-                                            <h2 className="heading-lg text-white">Git Automation Manager</h2>
-                                            <p className="text-zinc-400">Control de versiones inteligente. Puede crear ramas, hacer commits y gestionar el repositorio.</p>
-                                            <div className="flex gap-4">
-                                                <button
-                                                    className="btn-primary flex-1 flex items-center justify-center gap-2"
-                                                    onClick={() => toast.info('Git Status check...')}
-                                                >
-                                                    <Terminal size={16} /> Check Status
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
                                 </>
                             )}
                         </div>
@@ -330,17 +320,23 @@ const Agents = () => {
     );
 };
 
-const AgentCard = ({ icon, title, desc, active, onClick }) => (
+const AgentCard = ({ icon, title, desc, tooltip, active, onClick }) => (
     <div
         onClick={onClick}
-        className={`p-5 rounded-2xl border transition-all duration-300 cursor-pointer flex items-center gap-4 ${active ? 'bg-orange-600/10 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.1)]' : 'bg-zinc-900/40 border-white/5 hover:bg-zinc-800/40'}`}
+        className={`p-5 rounded-2xl border transition-all duration-300 cursor-pointer flex items-center gap-4 group relative ${active ? 'bg-orange-600/10 border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.1)]' : 'bg-zinc-900/40 border-white/5 hover:bg-zinc-800/40'}`}
+        title={tooltip}
     >
         <div className={`p-3 rounded-xl ${active ? 'bg-orange-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
             {icon}
         </div>
-        <div>
+        <div className="flex-1">
             <h3 className={`font-bold ${active ? 'text-white' : 'text-zinc-300'}`}>{title}</h3>
             <p className="text-xs text-zinc-500">{desc}</p>
+            {tooltip && (
+                <p className="text-[10px] text-blue-400 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    💡 {tooltip}
+                </p>
+            )}
         </div>
     </div>
 );
