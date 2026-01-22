@@ -744,7 +744,6 @@ async function scrapeHotmartProductDetails(hotmartId) {
         };
     }
 }
-}
 // Trigger Learning Research
 app.post('/api/agents/learning/research', async (req, res) => {
     const { topic, sourceUrl } = req.body;
