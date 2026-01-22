@@ -186,14 +186,50 @@ const Dashboard = () => {
             if (data.system_active !== undefined) setSystemOn(data.system_active);
         } catch (e) {
             console.error('Failed to fetch stats', e);
+            // Set fallback data when API is not available
+            setStats(prev => ({
+                ...prev,
+                status: 'OFFLINE',
+                ping: 0
+            }));
+        }
+    };
+
+    // Check if backend is available before fetching
+    const checkBackendAvailability = async () => {
+        try {
+            const response = await fetch(import.meta.env.VITE_API_URL + '/health', {
+                method: 'GET',
+                signal: AbortSignal.timeout(3000)
+            });
+            return response.ok;
+        } catch (e) {
+            return false;
         }
     };
 
     // Fetch stats on component mount
     useEffect(() => {
-        fetchStats();
-        const interval = setInterval(fetchStats, 10000); // Update every 10 seconds
-        return () => clearInterval(interval);
+        let interval = null;
+        
+        const initStats = async () => {
+            const isBackendAvailable = await checkBackendAvailability();
+            if (isBackendAvailable) {
+                setStatus('ONLINE');
+                await fetchStats();
+                // Only set interval if backend is available
+                interval = setInterval(fetchStats, 10000);
+            } else {
+                setStatus('OFFLINE');
+                console.log('⚠️ Backend server is not running. Dashboard will use offline mode.');
+            }
+        };
+        
+        initStats();
+        
+        return () => {
+            if (interval) clearInterval(interval);
+        };
     }, []);
 
     return (
