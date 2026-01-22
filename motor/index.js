@@ -499,14 +499,15 @@ app.post('/api/metrics', async (req, res) => {
   }
 });
 
-import detectorAgent from './src/agents/DetectorAgent.js';
-import instagramAgent from './src/agents/InstagramAgent.js';
-import contentAgent from './src/agents/ContentAgent.js';
-import assetsAgent from './src/agents/AssetsAgent.js';
-import gitAgent from './src/agents/GitAgent.js';
-import learningAgent from './src/agents/LearningAgent.js';
-import managerAgent from './src/agents/ManagerAgent.js';
-import affiliateAgent from './src/agents/AffiliateAgent.js';
+// Import agents
+const { default: detectorAgent } = await import('./src/agents/DetectorAgent.js');
+const { default: instagramAgent } = await import('./src/agents/InstagramAgent.js');
+const { default: contentAgent } = await import('./src/agents/ContentAgent.js');
+const { default: assetsAgent } = await import('./src/agents/AssetsAgent.js');
+const { default: gitAgent } = await import('./src/agents/GitAgent.js');
+const { default: learningAgent } = await import('./src/agents/LearningAgent.js');
+const { default: managerAgent } = await import('./src/agents/ManagerAgent.js');
+const { default: affiliateAgent } = await import('./src/agents/AffiliateAgent.js');
 
 // Init Agents
 (async () => {
@@ -1113,14 +1114,175 @@ app.get('/api/affiliate/metrics', async (req, res) => {
 // ...
 
 // Trigger Detector Agent
+// --- Bulk Product Operations ---
+app.post('/api/products/bulk', async (req, res) => {
+    const { products } = req.body;
+    
+    if (!Array.isArray(products) || products.length === 0) {
+        return res.status(400).json({ error: 'Products array is required' });
+    }
+    
+    try {
+        let insertedCount = 0;
+        let updatedCount = 0;
+        
+        for (const product of products) {
+            // Check if product already exists
+            const existsResult = await pool.query(
+                'SELECT id FROM products WHERE hotmart_id = $1',
+                [product.hotmart_id]
+            );
+            
+            if (existsResult.rows.length === 0) {
+                // Insert new product
+                await pool.query(`
+                    INSERT INTO products (hotmart_id, name, niche, url_sales_page, status, price, commission_rate, selected_for_tracking)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `, [
+                    product.hotmart_id,
+                    product.name,
+                    product.niche,
+                    product.url_sales_page || `https://hotmart.com/${product.hotmart_id}`,
+                    product.status || 'tracking',
+                    product.price || 0,
+                    product.commission_rate || 40,
+                    product.selected_for_tracking || false
+                ]);
+                insertedCount++;
+            } else {
+                // Update existing product
+                await pool.query(`
+                    UPDATE products SET 
+                        name = COALESCE($1, name),
+                        niche = COALESCE($2, niche),
+                        price = COALESCE($3, price),
+                        commission_rate = COALESCE($4, commission_rate),
+                        selected_for_tracking = COALESCE($5, selected_for_tracking),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE hotmart_id = $6
+                `, [
+                    product.name,
+                    product.niche,
+                    product.price,
+                    product.commission_rate,
+                    product.selected_for_tracking,
+                    product.hotmart_id
+                ]);
+                updatedCount++;
+            }
+        }
+        
+        res.json({
+            status: 'success',
+            message: `Bulk operation completed. ${insertedCount} new products inserted, ${updatedCount} products updated.`,
+            inserted: insertedCount,
+            updated: updatedCount,
+            total_processed: products.length
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- Enhanced Detector Agent Start ---
 app.post('/api/agents/detector/start', async (req, res) => {
-  try {
-    // Run in background (dont await the full scan for the response)
-    detectorAgent.scanMarket().then(result => {
-      console.log('Scan complete:', result);
-    }).catch(err => {
-      console.error('Scan error:', err);
-    });
+    const { deep = false } = req.body;
+    
+    try {
+        console.log(`🚀 Starting Detector Agent (deep scan: ${deep})`);
+        
+        // Update agent status in database
+        await pool.query(
+            'SELECT update_agent_activity($1, $2, $3)',
+            ['Detector', 'active', 'Market scanning for products...']
+        );
+        
+        // Run in background with proper status updates
+        detectorAgent.scanMarket().then(async (result) => {
+            console.log('✅ Scan complete:', result);
+            
+            if (result.status === 'success') {
+                // Update agent status to completed
+                await pool.query(
+                    'SELECT update_agent_activity($1, $2, $3)',
+                    ['Detector', 'inactive', `Scan completed: ${result.new_products} new products`]
+                );
+                
+                // Refresh dashboard stats (broadcast to all connected clients if needed)
+                console.log('📊 Dashboard stats updated with new products');
+            } else {
+                // Update agent status to error
+                await pool.query(
+                    'SELECT update_agent_activity($1, $2, $3)',
+                    ['Detector', 'error', `Scan failed: ${result.message}`]
+                );
+            }
+        }).catch(async (err) => {
+            console.error('❌ Scan error:', err);
+            
+            // Update agent status to error
+            await pool.query(
+                'SELECT update_agent_activity($1, $2, $3)',
+                ['Detector', 'error', `Scan error: ${err.message}`]
+            );
+        });
+
+        res.json({ 
+            status: 'Detector Agent Started', 
+            msg: `The agent is browsing Hotmart in the background... (Deep scan: ${deep})` 
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- Get Products with Metrics ---
+app.get('/api/products/metrics', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                p.id,
+                p.hotmart_id,
+                p.name,
+                p.niche,
+                p.price,
+                p.commission_rate,
+                p.selected_for_tracking,
+                p.total_revenue,
+                p.total_commissions,
+                p.status,
+                p.created_at,
+                COALESCE(dm.sales_count, 0) as sales_count,
+                COALESCE(dm.click_out_count, 0) as click_count,
+                COALESCE(dm.social_views, 0) as social_views,
+                COALESCE(dm.refund_count, 0) as refund_count
+            FROM products p
+            LEFT JOIN (
+                SELECT 
+                    product_id,
+                    SUM(sales_count) as sales_count,
+                    SUM(click_out_count) as click_out_count,
+                    SUM(social_views) as social_views,
+                    SUM(refund_count) as refund_count
+                FROM daily_metrics 
+                GROUP BY product_id
+            ) dm ON p.id = dm.product_id
+            ORDER BY p.created_at DESC
+            LIMIT 50
+        `);
+        
+        res.json({
+            status: 'success',
+            products: result.rows,
+            total: result.rows.length
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
     res.json({ status: 'Detector Agent Started', msg: 'The agent is browsing Hotmart in the background...' });
   } catch (error) {
