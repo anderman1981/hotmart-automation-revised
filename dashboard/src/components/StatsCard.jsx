@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-const StatsCard = ({ title, value, icon: Icon, trend, trendLabel, trendSuffix = '%', color = "blue", delay = 0 }) => {
+const StatsCard = ({ title, value, subtitle, icon: Icon, trend, trendLabel, trendSuffix = '%', color = "blue", delay = 0 }) => {
     return (
         <div
             className="card-glass p-6 relative overflow-hidden group hover:border-white/20 animate-slide-up"
@@ -19,6 +19,10 @@ const StatsCard = ({ title, value, icon: Icon, trend, trendLabel, trendSuffix = 
                 </div>
 
                 <p className="text-3xl font-display font-bold text-white tracking-tight">{value}</p>
+                
+                {subtitle && (
+                    <p className="text-sm text-zinc-500 mt-1">{subtitle}</p>
+                )}
 
                 {trend !== undefined && (
                     <div className={clsx(
