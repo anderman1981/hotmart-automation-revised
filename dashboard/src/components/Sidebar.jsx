@@ -78,15 +78,9 @@ const Sidebar = () => {
                             className={({ isActive }) => clsx(
                                 'nav-item w-full text-left group hover:bg-zinc-800/50',
                                 isActive && 'active'
-                            )}
-                        >
-                            <item.is_default ? (
-                                <Database size={20} className="text-blue-400" />
-                            ) : (
-                                (iconMap[item.path] || iconMap['default'])(size={20} className="group-hover:scale-110 transition-transform duration-200" />
-                            )}
-                            <span>{item.label}</span>
+                             )}
                         </NavLink>
+                    ))
                     ))
                 ) : (
                     defaultNavItems.map((item) => (
