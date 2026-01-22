@@ -3,8 +3,25 @@ import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
 const { Pool } = pg;
-import { createClient } from 'redis';
-import redis from 'redis';
+// Redis connection (optional for basic functionality)
+let redisClient = null;
+
+try {
+  const { createClient } = await import('redis');
+  redisClient = createClient({
+    url: `redis://${process.env.REDIS_HOST || 'localhost'}:6379`
+  });
+
+  redisClient.on('error', (err) => console.log('Redis Client Error', err));
+  
+  await redisClient.connect();
+  console.log('✅ Connected to Redis');
+} catch (e) {
+  console.log('⚠️ Redis not available, running without cache');
+  redisClient = {
+    isOpen: false
+  };
+}
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -1292,7 +1309,7 @@ app.get('/health', async (req, res) => {
       status: 'OK', 
       db: 'Connected', 
       timestamp: dbRes.rows[0].now,
-      redis: redisClient.isOpen ? 'Connected' : 'Disconnected' 
+      redis: redisClient && redisClient.isOpen ? 'Connected' : 'Disconnected' 
     });
   } catch (error) {
     res.status(500).json({ status: 'Error', error: error.message });
@@ -1308,7 +1325,7 @@ app.get('/health', async (req, res) => {
       status: 'OK', 
       db: 'Connected', 
       timestamp: dbRes.rows[0].now,
-      redis: redisClient.isOpen ? 'Connected' : 'Disconnected' 
+      redis: redisClient && redisClient.isOpen ? 'Connected' : 'Disconnected' 
     });
   } catch (error) {
     res.status(500).json({ status: 'Error', error: error.message });
