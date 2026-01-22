@@ -94,10 +94,9 @@ const Sidebar = () => {
                         >
                             <item.icon size={20} className="group-hover:scale-110 transition-transform duration-200" />
                             <span>{item.label}</span>
-                        </NavLink>
-                    ))
-                )}
-            </nav>
+                        <span>{item.label}</span>
+                    </NavLink>
+                </div>
 
             <div className="pt-6 border-t border-white/5 space-y-2">
                 <NavLink
