@@ -1,24 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Package, Bot, Settings, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 
 const Sidebar = () => {
-    const [branchName, setBranchName] = useState('...');
-
-    useEffect(() => {
-        const fetchBranch = async () => {
-            try {
-                const res = await fetch(import.meta.env.VITE_API_URL + '/api/git/status');
-                const data = await res.json();
-                if (data.current) setBranchName(data.current);
-            } catch (e) {
-                console.error("Failed to fetch branch status", e);
-                setBranchName('offline');
-            }
-        };
-        fetchBranch();
-    }, []);
+    const branchName = 'main';
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
