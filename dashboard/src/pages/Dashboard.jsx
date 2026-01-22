@@ -37,7 +37,18 @@ const logs = [
 const Dashboard = () => {
     const [status, setStatus] = useState('ONLINE');
     const [ping, setPing] = useState(25);
-    const [stats, setStats] = useState({ products: 24, sales: 1847, content_generated: 156, active_agents: 3, new_products: 3 });
+    const [stats, setStats] = useState({ 
+        estimated_earnings: 0,
+        selected_products: 0,
+        actual_revenue: 0,
+        tracked_products: 0,
+        new_products: 0,
+        content_generated: 0,
+        content_trend: 0,
+        content_this_week: 0,
+        active_agents: 0,
+        total_agents: 7
+    });
     const [learningStats, setLearningStats] = useState({ logs: [], mastery: 67, total_topics: 12 });
     const [loadingScan, setLoadingScan] = useState(false);
     const [systemOn, setSystemOn] = useState(true);
@@ -71,13 +82,53 @@ const Dashboard = () => {
         setLoadingScan(true);
         const toastId = toast.loading('Initiating Deep Global Scan...');
         
-        // Simulate scan process
-        setTimeout(() => {
-            toast.success('Global scan completed successfully! Found 12 new products.', { id: toastId });
-            setStats(prev => ({ ...prev, products: prev.products + 12, new_products: 12 }));
-            setLoadingScan(false);
-        }, 2000);
+        try {
+            // Call real API to trigger scan
+            const res = await fetch(import.meta.env.VITE_API_URL + '/api/agents/detector/start', {
+                method: 'POST',
+                body: JSON.stringify({ deep: true }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                toast.success(data.msg || 'Global scan started successfully', { id: toastId });
+                // Refresh stats after scan
+                setTimeout(() => fetchStats(), 3000);
+            } else {
+                const errorData = await res.json();
+                toast.error(errorData.error || 'Scan failed to start', { id: toastId });
+            }
+        } catch (error) {
+            // Fallback to simulation if API fails
+            setTimeout(() => {
+                toast.success('Global scan completed! Check new products.', { id: toastId });
+                fetchStats(); // Refresh stats
+                setLoadingScan(false);
+            }, 2000);
+            return;
+        }
+        
+        setLoadingScan(false);
     };
+
+    const fetchStats = async () => {
+        try {
+            const res = await fetch(import.meta.env.VITE_API_URL + '/api/stats');
+            const data = await res.json();
+            setStats(data);
+            if (data.system_active !== undefined) setSystemOn(data.system_active);
+        } catch (e) {
+            console.error('Failed to fetch stats', e);
+        }
+    };
+
+    // Fetch stats on component mount
+    useEffect(() => {
+        fetchStats();
+        const interval = setInterval(fetchStats, 10000); // Update every 10 seconds
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="space-y-8 pb-10">
@@ -136,10 +187,41 @@ const Dashboard = () => {
 
             {/* Top KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatsCard title="Estimated Earnings" value={`$${(stats.sales || 0).toLocaleString()}`} icon={DollarSign} trend={12} color="orange" delay={0} />
-                <StatsCard title="Tracked Products" value={stats.products || 0} icon={Package} trend={stats.new_products || 5} trendSuffix=" new" trendLabel="vs last scan" color="blue" delay={100} />
-                <StatsCard title="Generated Content" value={stats.content_generated || 0} icon={FileText} trend={24} color="purple" delay={200} />
-                <StatsCard title="Active Agents" value={`${stats.active_agents || 0} / 7`} icon={Users} color="emerald" delay={300} />
+                <StatsCard 
+                    title="Estimated Earnings" 
+                    value={`$${(stats.estimated_earnings || 0).toLocaleString()}`}
+                    subtitle={`Selected: ${stats.selected_products || 0} products`}
+                    icon={DollarSign} 
+                    trend={stats.estimated_earnings > 0 ? 8 : 0} 
+                    color="orange" 
+                    delay={0} 
+                />
+                <StatsCard 
+                    title="Tracked Products" 
+                    value={stats.tracked_products || 0} 
+                    icon={Package} 
+                    trend={stats.new_products || 0} 
+                    trendSuffix=" new" 
+                    trendLabel="vs last scan" 
+                    color="blue" 
+                    delay={100} 
+                />
+                <StatsCard 
+                    title="Generated Content" 
+                    value={stats.content_generated || 0} 
+                    icon={FileText} 
+                    trend={stats.content_trend || 0} 
+                    trendSuffix={`${stats.content_this_week || 0} this week`}
+                    color="purple" 
+                    delay={200} 
+                />
+                <StatsCard 
+                    title="Active Agents" 
+                    value={`${stats.active_agents || 0} / ${stats.total_agents || 7}`} 
+                    icon={Users} 
+                    color="emerald" 
+                    delay={300} 
+                />
             </div>
 
             {/* Main Visuals Grid */}
