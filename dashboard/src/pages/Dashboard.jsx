@@ -198,12 +198,22 @@ const Dashboard = () => {
     // Check if backend is available before fetching
     const checkBackendAvailability = async () => {
         try {
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            
             const response = await fetch(import.meta.env.VITE_API_URL + '/health', {
                 method: 'GET',
-                signal: AbortSignal.timeout(3000)
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             return response.ok;
         } catch (e) {
+            // Don't log connection errors to console to avoid spam
+            if (e.name !== 'AbortError') {
+                // Silent fail for connection errors
+            }
             return false;
         }
     };
