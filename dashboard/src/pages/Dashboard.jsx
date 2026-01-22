@@ -271,7 +271,7 @@ const Dashboard = () => {
                         </div>
 
                         <div className="flex-1 w-full h-full min-h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={undefined}>
                                 <AreaChart data={data}>
                                     <defs>
                                         <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -306,7 +306,7 @@ const Dashboard = () => {
                             <MonitorPlay size={16} /> Agent Activity Hours
                         </h3>
                         <div className="h-40 w-full mb-4">
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={undefined}>
                                 <BarChart data={activityData}>
                                     <Bar dataKey="active" radius={[4, 4, 0, 0]}>
                                         {activityData.map((entry, index) => (

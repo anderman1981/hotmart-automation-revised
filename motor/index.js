@@ -654,7 +654,11 @@ app.get('/api/products/:id/details', async (req, res) => {
         // Get detailed information by scraping Hotmart
         const detailedInfo = await scrapeHotmartProductDetails(product.hotmart_id);
         
-
+        // Combine basic and detailed info
+        const enrichedProduct = {
+            ...product,
+            ...detailedInfo
+        };
         
         res.json(enrichedProduct);
         
