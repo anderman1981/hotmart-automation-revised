@@ -21,6 +21,7 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
         
         try {
             console.log('Fetching product details for:', productId);
+            console.log('API URL from env:', import.meta.env.VITE_API_URL);
             
             // First check authorization
             const authResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/hotmart/check-auth`);
@@ -330,6 +331,32 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
                                 </div>
                             )}
 
+                            {/* Affiliate Status Warning */}
+                            {productDetails.affiliate_status === 'pending' && (
+                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-4">
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="text-yellow-500 w-5 h-5 mt-0.5" />
+                                        <div>
+                                            <h4 className="text-yellow-400 font-medium mb-2">Estado de Afiliación: Pendiente</h4>
+                                            <p className="text-zinc-300 text-sm mb-3">
+                                                Este producto aún no está configurado como afiliado. El enlace de afiliado se generará una vez que complete el proceso de registro en Hotmart.
+                                            </p>
+                                            <div className="bg-zinc-800/50 rounded-lg p-3">
+                                                <p className="text-zinc-400 text-xs mb-2">
+                                                    <strong>Para habilitar este producto como afiliado:</strong>
+                                                </p>
+                                                <ol className="text-zinc-400 text-xs space-y-1 list-decimal list-inside">
+                                                    <li>Inicie sesión en su cuenta Hotmart</li>
+                                                    <li>Navegue al área de afiliados</li>
+                                                    <li>Busque este producto por ID: <code className="bg-zinc-700 px-2 py-1 rounded text-yellow-400">{productDetails.hotmart_id}</code></li>
+                                                    <li>Active la promoción y genere su enlace único</li>
+                                                </ol>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Action Buttons */}
                             <div className="flex items-center gap-4 pt-6 border-t border-zinc-800">
                                 <a
@@ -339,17 +366,28 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
                                     className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
                                 >
                                     <ExternalLink className="w-4 h-4" />
-                                    Ver Página de Ventas
+                                    Ir a Página del Producto
                                 </a>
-                                <a
-                                    href={productDetails.affiliate_url || productDetails.url_sales_page + '?ref=W949655431L'}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
-                                >
-                                    <DollarSign className="w-4 h-4" />
-                                    Enlace de Afiliado
-                                </a>
+                                {productDetails.affiliate_status === 'active' ? (
+                                    <a
+                                        href={productDetails.affiliate_url || productDetails.url_sales_page + '?ref=W949655431L'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        <DollarSign className="w-4 h-4" />
+                                        Enlace de Afiliado ✅
+                                    </a>
+                                ) : (
+                                    <button
+                                        disabled
+                                        className="flex items-center gap-2 px-6 py-3 bg-zinc-700 text-zinc-400 rounded-lg font-medium cursor-not-allowed"
+                                        title="Regístrese como afiliado en Hotmart para activar este enlace"
+                                    >
+                                        <DollarSign className="w-4 h-4" />
+                                        Enlace de Afiliado 🔒
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}

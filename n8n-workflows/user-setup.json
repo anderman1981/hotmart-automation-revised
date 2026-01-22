@@ -1,0 +1,111 @@
+{
+  "name": "Hotmart Automation System Setup",
+  "nodes": [
+    {
+      "parameters": {
+        "order": [
+          {
+            "name": "createWorkflow",
+            "value": {
+              "options": {}
+            },
+            "type": "createWorkflow"
+          }
+        ]
+      },
+      "name": "Create User Account",
+      "type": "n8n-nodes-base.userManagement",
+      "typeVersion": 1,
+      "position": [
+        240,
+        240
+      ],
+      "parameters": {
+        "operation": "create",
+        "roles": [
+          {
+            "id": "937a874a-7578-4930-961b-c71991636c1e",
+            "name": "Affiliate Manager"
+          }
+        ]
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "N8n Basic Auth",
+          "name": "N8n Basic Auth"
+        }
+      },
+      "id": "8c5a008d-31de-4039-88bf-582ceac6a567",
+      "name": "Create User Account"
+    },
+    {
+      "parameters": {
+        "order": [
+          {
+            "name": "createWorkflow",
+            "value": {
+              "options": {}
+            },
+            "type": "createWorkflow"
+          }
+        ]
+      },
+      "name": "Set User Role",
+      "type": "n8n-nodes-base.userManagement",
+      "typeVersion": 1,
+      "position": [
+        460,
+        240
+      ],
+      "parameters": {
+        "operation": "setRole",
+        "userIds": {
+          "value": {
+            "type": "credentialId",
+            "value": "6e00919f-4782-425e-8387-8e1772937928"
+          }
+        },
+        "roles": {
+          "value": [
+            "937a874a-7578-4930-961b-c71991636c1e"
+          ]
+        }
+      },
+      "id": "cd1f7a00-4d9d-4637-a4ac-9083912b4f4",
+      "name": "Set User Role"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Create User Account": {
+      "main": [
+        [
+          {
+            "node": "Create User Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "Set User Role": {
+        "main": [
+          [
+            {
+            "node": "Set User Role",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7d1f7687-01a2-4d16-a8c8-b8b9d39e1831",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "user-setup-workflow"
+}
