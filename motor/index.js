@@ -158,9 +158,191 @@ app.get('/api/products', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+// --- ADMIN PRODUCTS MANAGEMENT ---
+
+// DELETE all products and reset metrics
+app.delete('/api/admin/products', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM affiliate_metrics');
+        await pool.query('DELETE FROM daily_metrics');
+        await pool.query('DELETE FROM products');
+        
+        gitAgent.updateWiki('ADMIN', 'System Reset', 'Deleted all products and reset metrics');
+        res.json({ status: 'success', msg: 'All products and metrics deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// GET Dashboard Stats
+// Delete all metrics only
+app.delete('/api/admin/metrics/reset', async (req, res) => {
+    try {
+        await pool.query('DELETE FROM affiliate_metrics');
+        await pool.query('DELETE FROM daily_metrics');
+        
+        gitAgent.updateWiki('ADMIN', 'Metrics Reset', 'Reset all metrics tables');
+        res.json({ status: 'success', msg: 'Metrics reset successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Populate with 20 high-earning products
+app.post('/api/admin/products/populate', async (req, res) => {
+    try {
+        const highEarningProducts = [
+            {
+                hotmart_id: 'HM-R94668718U',
+                name: 'Super Pack de Cursos 2024: Excel + 1000+ Cursos',
+                description: 'Paquete completo con más de 1000 cursos premium de Excel y productividad. Incluye plantillas, fórmulas avanzadas, dashboards automatizados y acceso de por vida.',
+                niche: 'Business',
+                url_sales_page: 'https://pay.hotmart.com/R94668718U',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-K94730729B',
+                name: 'Curso de Marketing Digital 360°',
+                description: 'Domina todas las estrategias de marketing digital: SEO, redes sociales, email marketing, Google Ads y conversión.',
+                niche: 'Marketing',
+                url_sales_page: 'https://pay.hotmart.com/K94730729B',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-P91358755M',
+                name: 'Programación Web Full Stack 2024',
+                description: 'Curso completo de desarrollo web: HTML, CSS, JavaScript, React, Node.js, bases de datos y despliegue en la nube.',
+                niche: 'Technology',
+                url_sales_page: 'https://pay.hotmart.com/P91358755M',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-C94210987F',
+                name: 'Trading Profesional con Análisis Técnico',
+                description: 'Aprende a operar en los mercados financieros con análisis técnico avanzado, gestión de riesgo y estrategias probadas.',
+                niche: 'Finance',
+                url_sales_page: 'https://pay.hotmart.com/C94210987F',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-T94321684S',
+                name: 'Fitness Transformation Elite',
+                description: 'Programa integral de transformación física con nutrición personalizada, entrenamientos de alta intensidad y seguimiento continuo.',
+                niche: 'Health & Fitness',
+                url_sales_page: 'https://pay.hotmart.com/T94321684S',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-F97654321D',
+                name: 'Criptocurrency Trading Master',
+                description: 'Curso avanzado de trading de criptomonedas: análisis de mercado, gestión de portafolio, estrategias de inversión y seguridad.',
+                niche: 'Finance',
+                url_sales_page: 'https://pay.hotmart.com/F97654321D',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-H98765432L',
+                name: 'IA Generativa para Negocios',
+                description: 'Aprende a usar ChatGPT, Midjourney y otras herramientas de IA para automatizar y escalar tu negocio.',
+                niche: 'Technology',
+                url_sales_page: 'https://pay.hotmart.com/H98765432L',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-J965432109R',
+                name: 'Consultoría Empresarial Premium',
+                description: 'Conviértete en consultor experto en gestión de empresas, finanzas corporativas, liderazgo de equipos y estrategia empresarial.',
+                niche: 'Business',
+                url_sales_page: 'https://pay.hotmart.com/J965432109R',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-G95432109G',
+                name: 'Producción de Contenido para Redes Sociales',
+                description: 'Crea contenido viral para Instagram, TikTok y YouTube. Incluye plantillas, herramientas de edición y estrategias de monetización.',
+                niche: 'Marketing',
+                url_sales_page: 'https://pay.hotmart.com/G95432109G',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-Y98765432K',
+                name: 'Freelancing Digital Exitoso',
+                description: 'Curso completo para convertirse en freelancer exitoso: propuesta de servicios, fijación de precios, cliente ideal y gestión de múltiples proyectos.',
+                niche: 'Business',
+                url_sales_page: 'https://pay.hotmart.com/Y98765432K',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-M965432109N',
+                name: 'Desarrollo de Apps Móviles con Flutter',
+                description: 'Aprende a desarrollar aplicaciones móviles para iOS y Android usando Flutter desde cero hasta publicación en las tiendas.',
+                niche: 'Technology',
+                url_sales_page: 'https://pay.hotmart.com/M965432109N',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-Q965432109W',
+                name: 'Inglés Profesional para Negocios',
+                description: 'Domina el inglés de negocios para comunicaciones internacionales, presentaciones, negociaciones y correos corporativos.',
+                niche: 'Education',
+                url_sales_page: 'https://pay.hotmart.com/Q965432109W',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-L95432109E',
+                name: 'Producción Musical Profesional',
+                description: 'Curso completo de producción musical: composición, arreglos, mezcla y masterización para proyectos profesionales.',
+                niche: 'Creative',
+                url_sales_page: 'https://pay.hotmart.com/L95432109E',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-X95432109Z',
+                name: 'Fotografía de Producto Profesional',
+                description: 'Aprende fotografía de producto para tiendas online: lighting, composición, editing y retouching con equipos profesionales.',
+                niche: 'Creative',
+                url_sales_page: 'https://pay.hotmart.com/X95432109Z',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-W95432109P',
+                name: 'Marketing de Contenidos B2B',
+                description: 'Estrategias de marketing de contenidos para empresas: blog, whitepapers, webinars y generación de leads B2B.',
+                niche: 'Marketing',
+                url_sales_page: 'https://pay.hotmart.com/W95432109P',
+                status: 'active'
+            },
+            {
+                hotmart_id: 'HM-K95432109H',
+                name: 'Data Science y Machine Learning Aplicados',
+                description: 'Aplica data science y machine learning a problemas reales de negocio: predicción de ventas, segmentación de clientes y optimización de precios.',
+                niche: 'Technology',
+                url_sales_page: 'https://pay.hotmart.com/K95432109H',
+                status: 'active'
+            }
+        ];
+        
+        for (const product of highEarningProducts) {
+            const productId = crypto.randomUUID();
+            await pool.query(
+                `INSERT INTO products (id, hotmart_id, name, description, niche, url_sales_page, status) 
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [productId, product.hotmart_id, product.name, product.description, product.niche, product.url_sales_page, 'active']
+            );
+            
+            await pool.query(
+                `INSERT INTO product_scores (product_id) VALUES ($1)`,
+                [productId]
+            );
+        }
+        
+        gitAgent.updateWiki('ADMIN', 'Products Populated', 'Created 20 high-earning products');
+        res.json({ status: 'success', msg: 'Database populated with 20 high-earning products', count: highEarningProducts.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Dashboard Stats
 app.get('/api/stats', async (req, res) => {
     try {
         const productsCount = await pool.query('SELECT COUNT(*) FROM products');
