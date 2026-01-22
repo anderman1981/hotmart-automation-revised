@@ -1283,11 +1283,21 @@ app.get('/api/products/metrics', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
-    res.json({ status: 'Detector Agent Started', msg: 'The agent is browsing Hotmart in the background...' });
+    
+app.get('/health', async (req, res) => {
+// ...
+  try {
+    const dbRes = await pool.query('SELECT NOW()');
+    res.json({ 
+      status: 'OK', 
+      db: 'Connected', 
+      timestamp: dbRes.rows[0].now,
+      redis: redisClient.isOpen ? 'Connected' : 'Disconnected' 
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ status: 'Error', error: error.message });
   }
+});
 });
 
 app.get('/health', async (req, res) => {
