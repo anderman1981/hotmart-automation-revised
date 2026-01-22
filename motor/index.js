@@ -34,20 +34,8 @@ const pool = new Pool({
   port: 5432,
 });
 
-// Redis Connection
-const redisClient = createClient({
-  url: `redis://${process.env.REDIS_HOST}:6379`
-});
-
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
-
-(async () => {
-  await redisClient.connect();
-  console.log('✅ Connected to Redis');
-})();
-
-// Global System State
-let SYSTEM_ACTIVE = true;
+        // Global System State
+        let SYSTEM_ACTIVE = true;
 
 // Routes
 app.get('/', (req, res) => {
