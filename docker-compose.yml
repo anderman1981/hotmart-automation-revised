@@ -55,10 +55,10 @@ services:
     ports:
       - "5679:5678"
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-false}
-      - N8N_USER_MANAGEMENT_DISABLED=${N8N_USER_MANAGEMENT_DISABLED:-true}
-      - N8N_EMAIL=${VP_N8N_USER:-admin@localhost.com}
-      - N8N_PASSWORD=${VP_N8N_PASSWORD:-admin}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_USER_MANAGEMENT_DISABLED=false
+      - N8N_EMAIL=${VP_N8N_USER:-afiliados@hotmart.com}
+      - N8N_PASSWORD=${VP_N8N_PASSWORD:-Hotmart2024!}
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
       - N8N_LICENSE_TOKEN=${N8N_LICENSE_TOKEN}
       - DB_TYPE=postgresdb
@@ -67,11 +67,19 @@ services:
       - DB_POSTGRESDB_DATABASE=${DB_NAME:-hotmart}
       - DB_POSTGRESDB_USER=${DB_USER:-hotmart_user}
       - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD:-securepassword}
+      - N8N_HOST=localhost
+      - N8N_PORT=5679
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:4123/webhook
+      - GENERIC_TIMEZONE=America/Mexico_City
     depends_on:
       db:
         condition: service_healthy
+      motor:
+        condition: service_started
     volumes:
       - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/home/node/.n8n/workflows
     networks:
       - hotmart_net
 
