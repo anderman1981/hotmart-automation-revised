@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Package, Bot, Settings, LogOut, BarChart2, FileText, Zap, Shield, Database } from 'lucide-react';
+import { LayoutDashboard, Package, Bot, Settings, LogOut } from 'lucide-react';
 import clsx from 'clsx';
- 
+
 const Sidebar = () => {
     const [branchName, setBranchName] = useState('...');
-    const [menuItems, setMenuItems] = useState([]);
-    const [loadingMenu, setLoadingMenu] = useState(true);
- 
+
     useEffect(() => {
         const fetchBranch = async () => {
             try {
@@ -20,36 +18,12 @@ const Sidebar = () => {
             }
         };
         fetchBranch();
-
-        const fetchMenuItems = async () => {
-            try {
-                const res = await fetch(import.meta.env.VITE_API_URL + '/api/settings/menu');
-                const data = await res.json();
-                if (data.menu) setMenuItems(data.menu);
-                setLoadingMenu(false);
-            } catch (e) {
-                console.error("Failed to fetch menu items", e);
-                setLoadingMenu(false);
-            }
-        };
-        fetchMenuItems();
     }, []);
 
-    const iconMap = {
-        'dashboard': LayoutDashboard,
-        'products': Package,
-        'agents': Bot,
-        'tests': BarChart2,
-        'data': FileText,
-        'security': Shield,
-        'database': Database,
-        'default': Zap
-    };
- 
-    const defaultNavItems = [
+    const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-        { icon: Package, label: 'Products', path: '/productos' },
-        { icon: Bot, label: 'Agents', path: '/agentes' },
+        { icon: Package, label: 'Products', path: '/productos' }, // Fixed path
+        { icon: Bot, label: 'Agents', path: '/agentes' }, // Fixed path
     ];
 
     return (
@@ -65,38 +39,20 @@ const Sidebar = () => {
             </div>
 
             <nav className="space-y-2 flex-1">
-                {loadingMenu ? (
-                    <div className="nav-item opacity-50">
-                        <Zap size={20} className="animate-spin" />
-                        <span>Loading...</span>
-                    </div>
-                ) : menuItems.length > 0 ? (
-                    menuItems.map((item) => (
-                        <NavLink
-                            key={item.id}
-                            to={item.path}
-                            className={({ isActive }) => clsx(
-                                'nav-item w-full text-left group hover:bg-zinc-800/50',
-                                isActive && 'active'
-                             )}
-                        </NavLink>
-                    ))
-                    ))
-                ) : (
-                    defaultNavItems.map((item) => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            className={({ isActive }) => clsx(
-                                'nav-item group',
-                                isActive && 'active'
-                            )}
-                        >
-                            <item.icon size={20} className="group-hover:scale-110 transition-transform duration-200" />
-                            <span>{item.label}</span>
+                {navItems.map((item) => (
+                    <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) => clsx(
+                            'nav-item group',
+                            isActive && 'active'
+                        )}
+                    >
+                        <item.icon size={20} className="group-hover:scale-110 transition-transform duration-200" />
                         <span>{item.label}</span>
                     </NavLink>
-                </div>
+                ))}
+            </nav>
 
             <div className="pt-6 border-t border-white/5 space-y-2">
                 <NavLink
