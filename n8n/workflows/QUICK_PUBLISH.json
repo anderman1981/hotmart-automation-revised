@@ -1,0 +1,28 @@
+{
+  "name": "QUICK_PUBLISH",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "MANUAL_TRIGGER",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Publicación instantánea con validación\nconst baseUrl = 'http://localhost:4123';\n\ntry {\n  // Verificar sistema primero\n  const healthCheck = await fetch(`${baseUrl}/health`);\n  const health = await healthCheck.json();\n  \n  if (!health.status || health.status !== 'ok') {\n    throw new Error('System not ready');\n  }\n  \n  // Publicar en Instagram\n  const response = await fetch(`${baseUrl}/api/agents/instagram/start`, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ \n      source: 'manual',\n      immediate: true \n    })\n  });\n  \n  const result = await response.json();\n  \n  return {\n    json: {\n      success: true,\n      message: '🚀 Content published successfully!',\n      result: result,\n      timestamp: new Date().toISOString()\n    }\n  };\n  \n} catch (error) {\n  return {\n    json: {\n      success: false,\n      message: '❌ Publication failed',\n      error: error.message,\n      timestamp: new Date().toISOString()\n    }\n  };\n}"
+      },
+      "name": "INSTANT_PUBLISH",
+      "type": "n8n-nodes-base.function",
+      "position": [450, 300]
+    }
+  ],
+  "connections": {
+    "MANUAL_TRIGGER": {
+      "main": [[{ "node": "INSTANT_PUBLISH", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

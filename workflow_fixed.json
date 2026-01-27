@@ -1,0 +1,95 @@
+{
+  "name": "HOTMART_AUTO_LOOP_FIXED",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 6,
+              "unit": "hours"
+            }
+          ]
+        }
+      },
+      "name": "CRON_LOOP",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:4126/api/generate",
+        "method": "POST",
+        "jsonParameters": true,
+        "bodyParametersJson": "{ \"model\": \"llama3.2\", \"prompt\": \"Analiza los productos hotmart y genera insights de marketing en 3 puntos clave\", \"stream\": false }"
+      },
+      "name": "OLLAMA_ANALYSIS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:4126/api/generate",
+        "method": "POST",
+        "jsonParameters": true,
+        "bodyParametersJson": "{ \"model\": \"llama3.2\", \"prompt\": \"Crea un post de Instagram atractivo sobre productos hotmart con hashtags\", \"stream\": false }"
+      },
+      "name": "CONTENT_GENERATION",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:4123/api/products",
+        "method": "GET"
+      },
+      "name": "CHECK_PRODUCTS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [950, 300]
+    }
+  ],
+  "connections": {
+    "CRON_LOOP": {
+      "main": [
+        [
+          {
+            "node": "OLLAMA_ANALYSIS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OLLAMA_ANALYSIS": {
+      "main": [
+        [
+          {
+            "node": "CONTENT_GENERATION",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CONTENT_GENERATION": {
+      "main": [
+        [
+          {
+            "node": "CHECK_PRODUCTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -9,92 +9,24 @@
       },
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [
-        460,
-        300
-      ],
-      "webhookId": "manager-event"
+      "position": [460, 300]
     },
     {
       "parameters": {
-        "functionCode": "// Transform the content for destination\nconst body = items[0].json.body;\n\nreturn {\n  json: {\n    title: body.task || 'New Task',\n    description: JSON.stringify(body.output, null, 2),\n    date: new Date().toISOString(),\n    status: 'To Do'\n  }\n};"
+        "functionCode": "// Procesar webhook y publicar en Instagram\nconst baseUrl = 'http://localhost:4123';\nconst data = items[0].json;\n\ntry {\n  // Publicar contenido via Instagram agent\n  const response = await fetch(`${baseUrl}/api/agents/instagram/start`, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ \n      source: 'webhook',\n      content: data\n    })\n  });\n  \n  const result = await response.json();\n  \n  return {\n    json: {\n      success: true,\n      message: 'Content published via webhook',\n      result: result,\n      timestamp: new Date().toISOString()\n    }\n  };\n  \n} catch (error) {\n  return {\n    json: {\n      success: false,\n      message: 'Publication failed',\n      error: error.message,\n      timestamp: new Date().toISOString()\n    }\n  };\n}"
       },
-      "name": "Format Data",
+      "name": "Process & Publish",
       "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [
-        680,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "application": "appYk0yT2... (Replace with ID)",
-        "table": "tbl... (Replace with ID)",
-        "columns": {
-          "Name": "={{$node[\"Format Data\"].json[\"title\"]}}",
-          "Notes": "={{$node[\"Format Data\"].json[\"description\"]}}",
-          "Status": "={{$node[\"Format Data\"].json[\"status\"]}}"
-        }
-      },
-      "name": "Airtable (Example)",
-      "type": "n8n-nodes-base.airtable",
-      "typeVersion": 1,
-      "position": [
-        900,
-        200
-      ],
-      "disabled": true,
-      "notes": "Enable and configure credentials to sync with Airtable"
-    },
-    {
-      "parameters": {
-        "calendar": "primary",
-        "start": "={{$node[\"Format Data\"].json[\"date\"]}}",
-        "end": "={{$node[\"Format Data\"].json[\"date\"]}}",
-        "summary": "={{$node[\"Format Data\"].json[\"title\"]}}",
-        "description": "={{$node[\"Format Data\"].json[\"description\"]}}"
-      },
-      "name": "Google Calendar (Example)",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
-      "position": [
-        900,
-        400
-      ],
-      "disabled": true,
-      "notes": "Enable and configure credentials to sync with Google Calendar"
+      "position": [680, 300]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [
-        [
-          {
-            "node": "Format Data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format Data": {
-      "main": [
-        [
-          {
-            "node": "Airtable (Example)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Google Calendar (Example)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Process & Publish", "type": "main", "index": 0 }]]
     }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
   }
 }

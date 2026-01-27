@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "url": "http://motor:4123/api/manager/run",
+        "url": "http://localhost:4123/api/agents/manager/task",
         "method": "POST",
         "jsonParameters": true,
         "options": {},
@@ -33,7 +33,7 @@
     },
     {
       "parameters": {
-        "url": "http://motor:4123/api/instagram/publish",
+        "url": "http://localhost:4123/api/agents/instagram/start",
         "method": "POST",
         "jsonParameters": true,
         "options": {},
@@ -46,8 +46,8 @@
     },
     {
       "parameters": {
-        "url": "http://motor:4123/api/metrics/collect",
-        "method": "POST",
+        "url": "http://localhost:4123/api/stats",
+        "method": "GET",
         "jsonParameters": true,
         "options": {}
       },
@@ -58,12 +58,12 @@
     },
     {
       "parameters": {
-        "url": "http://motor:4123/api/metrics/feedback",
+        "url": "http://localhost:4123/api/stats",
         "method": "POST",
         "jsonParameters": true,
         "options": {}
       },
-      "name": "FEEDBACK_LOOP",
+        "name": "GET_STATS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
       "position": [1200, 300]
@@ -107,7 +107,7 @@
       "main": [
         [
           {
-            "node": "FEEDBACK_LOOP",
+            "node": "GET_STATS",
             "type": "main",
             "index": 0
           }

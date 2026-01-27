@@ -180,7 +180,7 @@ const Products = () => {
                         </div>
                     ) : (
                         products.filter(product => {
-                            if (activeView === 'active') return product.status !== 'cold';
+                            if (activeView === 'active') return product.status !== 'cold'; // Include tracking, testing, active
                             if (activeView === 'freezer') return product.status === 'cold';
                             return true; // 'all'
                         }).map((p) => (

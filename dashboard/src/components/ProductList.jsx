@@ -467,41 +467,6 @@ const ProductList = ({ isScanning = false, scanProgress = 0 }) => {
                 </div>
             </div>
 
-            {/* Estilos inline */}
-            <style jsx>{`
-                .custom-scrollbar::-webkit-scrollbar {
-                    width: 6px;
-                }
-                
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: rgba(0, 0, 0, 0.1);
-                    border-radius: 3px;
-                }
-                
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: rgba(251, 146, 60, 0.3);
-                    border-radius: 3px;
-                }
-                
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: rgba(251, 146, 60, 0.5);
-                }
-                
-                @keyframes fade-in {
-                    from {
-                        opacity: 0;
-                        transform: translateY(10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                
-                .animate-fade-in {
-                    animation: fade-in 0.3s ease-out forwards;
-                }
-            `}</style>
         </div>
     );
 };
