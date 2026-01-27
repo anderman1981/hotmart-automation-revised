@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:3000/api/manager/scale",
+        "url": "http://localhost:4123/api/agents/manager/task",
         "method": "POST",
         "jsonParameters": true
       },

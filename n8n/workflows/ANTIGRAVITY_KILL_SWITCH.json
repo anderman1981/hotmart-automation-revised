@@ -13,7 +13,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:3000/api/system/health",
+        "url": "http://localhost:4123/health",
         "method": "GET"
       },
       "name": "CHECK_HEALTH",
@@ -22,7 +22,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:3000/api/system/stop",
+        "url": "http://localhost:4123/api/system/stop",
         "method": "POST"
       },
       "name": "STOP_ALL",

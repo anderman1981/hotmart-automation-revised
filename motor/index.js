@@ -327,16 +327,10 @@ app.post('/api/admin/products/populate', async (req, res) => {
         ];
         
         for (const product of highEarningProducts) {
-            const productId = crypto.randomUUID();
             await pool.query(
-                `INSERT INTO products (id, hotmart_id, name, description, niche, url_sales_page, status) 
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [productId, product.hotmart_id, product.name, product.description, product.niche, product.url_sales_page, 'active']
-            );
-            
-            await pool.query(
-                `INSERT INTO product_scores (product_id) VALUES ($1)`,
-                [productId]
+                `INSERT INTO products (hotmart_id, name, description, niche, url_sales_page, status, affiliate_commission) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [product.hotmart_id, product.name, product.description, product.niche, product.url_sales_page, product.status || 'testing', 40.0]
             );
         }
         
