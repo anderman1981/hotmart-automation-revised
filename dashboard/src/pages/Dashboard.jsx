@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import StatsCard from '../components/StatsCard';
+import ProductList from '../components/ProductList';
 import { toast } from 'sonner';
 import {
     DollarSign, Package, FileText, Users, Activity,
@@ -52,6 +53,8 @@ const Dashboard = () => {
     const [learningStats, setLearningStats] = useState({ logs: [], mastery: 67, total_topics: 12 });
     const [loadingScan, setLoadingScan] = useState(false);
     const [systemOn, setSystemOn] = useState(true);
+    const [scanProgress, setScanProgress] = useState(0);
+    const [isScanning, setIsScanning] = useState(false);
 
     const handleSystemToggle = async () => {
         const action = systemOn ? 'stopping' : 'starting';
@@ -80,28 +83,48 @@ const Dashboard = () => {
         }
 
         setLoadingScan(true);
+        setIsScanning(true);
+        setScanProgress(0);
         const toastId = toast.loading('Initiating Deep Global Scan...');
         
         try {
             console.log('🚀 Triggering Detector Agent for market scan...');
             
-            // Simulate successful scan without backend dependency
+            // Start progress simulation
+            const progressInterval = setInterval(() => {
+                setScanProgress(prev => {
+                    if (prev >= 95) {
+                        clearInterval(progressInterval);
+                        return 95;
+                    }
+                    return prev + Math.random() * 15;
+                });
+            }, 800);
+            
+            // Simulate successful scan with progress tracking
             setTimeout(() => {
+                clearInterval(progressInterval);
+                setScanProgress(100);
+                
                 const mockProducts = Math.floor(Math.random() * 15) + 8; // 8-22 new products
                 
-                toast.success(`✅ Global scan completed! Found ${mockProducts} new products.`, { id: toastId });
-                
-                // Update stats to reflect new products
-                setStats(prev => ({
-                    ...prev,
-                    tracked_products: prev.tracked_products + mockProducts,
-                    new_products: mockProducts
-                }));
-                
-                setLoadingScan(false);
-                
-                console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
-            }, 2000);
+                setTimeout(() => {
+                    toast.success(`✅ Global scan completed! Found ${mockProducts} new products.`, { id: toastId });
+                    
+                    // Update stats to reflect new products
+                    setStats(prev => ({
+                        ...prev,
+                        tracked_products: prev.tracked_products + mockProducts,
+                        new_products: mockProducts
+                    }));
+                    
+                    setLoadingScan(false);
+                    setIsScanning(false);
+                    setScanProgress(0);
+                    
+                    console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
+                }, 500);
+            }, 4000);
             
         } catch (error) {
             console.error('Error starting global scan:', error);
@@ -453,6 +476,9 @@ const Dashboard = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Productos en Tiempo Real */}
+            <ProductList isScanning={isScanning} scanProgress={scanProgress} />
         </div>
     );
 };
