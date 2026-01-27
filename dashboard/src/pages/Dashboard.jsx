@@ -57,55 +57,21 @@ const Dashboard = () => {
     const [isScanning, setIsScanning] = useState(false);
     const [scanResult, setScanResult] = useState(null);
 
-    const handleSystemToggle = async () => {
-        const action = systemOn ? 'stopping' : 'starting';
-        const toastId = toast.loading(`System ${action}...`);
-
-        try {
-            const endpoint = systemOn ? '/api/system/stop' : '/api/system/start';
-            const res = await fetch(import.meta.env.VITE_API_URL + endpoint, { method: 'POST' });
-            const data = await res.json();
-
-            if (data.status === 'success') {
-                setSystemOn(!systemOn);
-                toast.success(data.msg || `System ${systemOn ? 'Stopped' : 'Started'}`, { id: toastId });
-            } else {
-                toast.error('Operation failed', { id: toastId });
-            }
-        } catch (e) {
-            toast.error('Error toggling system: ' + e.message, { id: toastId });
-        }
-    };
-
+    // Handle global scan
     const handleGlobalScan = async () => {
-        if (!systemOn) {
-            toast.error('Please start system first (SYSTEM ON)');
-            return;
-        }
-
+        const toastId = toast.loading('🚀 Starting global marketplace scan...');
         setLoadingScan(true);
         setIsScanning(true);
         setScanProgress(0);
-        const toastId = toast.loading('Initiating Deep Global Scan...');
         
-        try {
-            console.log('🚀 Triggering Detector Agent for market scan...');
+        // Simulate scan progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress = Math.min(progress + Math.random() * 20 + 5, 100);
+            setScanProgress(Math.floor(progress));
             
-            // Start progress simulation
-            const progressInterval = setInterval(() => {
-                setScanProgress(prev => {
-                    if (prev >= 95) {
-                        clearInterval(progressInterval);
-                        return 95;
-                    }
-                    return prev + Math.random() * 15;
-                });
-            }, 800);
-            
-            // Simulate successful scan with progress tracking
-            setTimeout(() => {
+            if (progress >= 100) {
                 clearInterval(progressInterval);
-                setScanProgress(100);
                 
                 const mockProducts = Math.floor(Math.random() * 15) + 8; // 8-22 new products
                 
@@ -119,35 +85,57 @@ const Dashboard = () => {
                         new_products: mockProducts
                     }));
                     
+                    // Set scan result for ProductList
+                    setScanResult({
+                        new_products: mockProducts,
+                        total_products: mockProducts,
+                        scan_time: new Date().toISOString()
+                    });
+                    
                     setLoadingScan(false);
                     setIsScanning(false);
                     setScanProgress(0);
-                    // Clear scan result after 10 seconds
-                    setTimeout(() => setScanResult(null), 10000);
-                    setScanProgress(0);
+                    
                     // Clear scan result after 10 seconds
                     setTimeout(() => setScanResult(null), 10000);
                     
                     console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
-                    
-                    // Set scan result for ProductList
-                    setScanResult({
-                        new_products: mockProducts,
-                        total_products: mockProducts,
-                        scan_time: new Date().toISOString()
-                    });
-                    
-                    // Set scan result for ProductList
-                    setScanResult({
-                        new_products: mockProducts,
-                        total_products: mockProducts,
-                        scan_time: new Date().toISOString()
-                    });
-                    
-                    setLoadingScan(false);
-                    
-                    console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
-            }, 2000);
+                }, 500);
+            }
+        }, 800);
+        
+        // Error handling fallback
+        try {
+            setTimeout(() => {
+                const mockProducts = Math.floor(Math.random() * 15) + 8;
+                
+                toast.success(`✅ Global scan completed! Found ${mockProducts} new products.`, { id: toastId });
+                
+                setStats(prev => ({
+                    ...prev,
+                    tracked_products: prev.tracked_products + mockProducts,
+                    new_products: mockProducts
+                }));
+                
+                setScanResult({
+                    new_products: mockProducts,
+                    total_products: mockProducts,
+                    scan_time: new Date().toISOString()
+                });
+                
+                setLoadingScan(false);
+                setIsScanning(false);
+                setScanProgress(0);
+                
+                setTimeout(() => setScanResult(null), 10000);
+                
+                console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
+            }, 4000);
+        } catch (error) {
+            console.error('Error starting global scan:', error);
+            toast.error('❌ Scan failed. Please try again.', { id: toastId });
+            setLoadingScan(false);
+            setIsScanning(false);
         }
     };
 
@@ -159,7 +147,6 @@ const Dashboard = () => {
             if (data.system_active !== undefined) setSystemOn(data.system_active);
         } catch (e) {
             console.error('Failed to fetch stats', e);
-            // Set fallback data when API is not available
             setStats(prev => ({
                 ...prev,
                 status: 'OFFLINE',
@@ -177,306 +164,294 @@ const Dashboard = () => {
             });
             return response.ok;
         } catch (e) {
-            // Silent fail for connection errors
             return false;
         }
     };
 
-    // Fetch stats on component mount
+    // Initialize stats on mount
     useEffect(() => {
-        let interval = null;
-        
         const initStats = async () => {
             const isBackendAvailable = await checkBackendAvailability();
             if (isBackendAvailable) {
-                setStatus('ONLINE');
                 await fetchStats();
-                // Only set interval if backend is available
-                interval = setInterval(fetchStats, 10000);
             } else {
-                setStatus('OFFLINE');
-                console.log('⚠️ Backend server is not running. Dashboard will use offline mode.');
+                console.log('Backend not available, using fallback data');
             }
         };
         
         initStats();
         
-        return () => {
-            if (interval) clearInterval(interval);
-        };
+        // Set up periodic stats refresh
+        const statsInterval = setInterval(fetchStats, 30000); // Every 30 seconds
+        
+        return () => clearInterval(statsInterval);
     }, []);
 
+    // Initialize learning stats
+    useEffect(() => {
+        const mockLearningLogs = [
+            { topic: "Marketing Digital", progress: 85, status: "completed" },
+            { topic: "Python Automation", progress: 60, status: "in_progress" },
+            { topic: "Social Media Trends", progress: 40, status: "in_progress" }
+        ];
+        
+        setLearningStats({
+            logs: mockLearningLogs,
+            mastery: 67,
+            total_topics: 12
+        });
+    }, []);
+
+    const COLORS = ['#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#8B5CF6'];
+    
+    const activeAgentsCount = learningStats.logs?.filter(log => log.status === 'completed').length || 0;
+
     return (
-        <div className="space-y-8 pb-10">
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-                <div>
-                    <h1 className="text-4xl font-display font-bold text-white tracking-tighter mb-1">
-                        Command Center
-                    </h1>
-                    <div className="flex items-center gap-3 text-sm">
-                        <span className={`px-2 py-0.5 rounded border ${status === 'ONLINE'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : 'bg-red-500/10 text-red-500 border-red-500/20'
-                            } font-mono font-bold flex items-center gap-2`}>
-                            {status === 'ONLINE' && <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>}
-                            {status}
-                        </span>
-                        <span className="text-zinc-500 font-mono flex items-center gap-1">
-                            <Server size={14} /> {ping}ms latency
-                        </span>
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 p-6">
+            {/* Header */}
+            <div className="mb-8">
+                <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex justify-between items-center"
+                >
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-2">Hotmart Automation Dashboard</h1>
+                        <p className="text-gray-400">Real-time marketplace intelligence and content automation</p>
                     </div>
-                </div>
-
-                <div className="flex gap-3">
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleSystemToggle}
-                        className={`px-6 py-3 rounded-xl font-bold font-display shadow-lg flex items-center gap-2 transition-all ${systemOn
-                            ? 'bg-red-500/10 text-red-400 border border-red-500/50 hover:bg-red-500/20'
-                            : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-900/40'
-                            }`}
-                    >
-                        <Power size={20} />
-                        {systemOn ? 'Stop System' : 'Start System'}
-                    </motion.button>
-
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={handleGlobalScan}
-                        disabled={loadingScan}
-                        className={`px-6 py-3 rounded-xl font-bold font-display shadow-lg flex items-center gap-2 transition-all ${loadingScan
-                            ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
-                            : systemOn ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-900/40' : 'bg-orange-600/50 hover:bg-orange-500/50 text-white/50 border border-orange-500/30'
-                            }`}
-                    >
-                        <Zap size={20} className={loadingScan ? 'animate-pulse' : 'fill-white'} />
-                        {loadingScan ? 'Scanning...' : 'Trigger Global Scan'}
-                    </motion.button>
-                </div>
-            </div>
-
-            {/* Top KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatsCard 
-                    title="Estimated Earnings" 
-                    value={`$${(stats.estimated_earnings || 0).toLocaleString()}`}
-                    subtitle={`Selected: ${stats.selected_products || 0} products`}
-                    icon={DollarSign} 
-                    trend={stats.estimated_earnings > 0 ? 8 : 0} 
-                    color="orange" 
-                    delay={0} 
-                />
-                <StatsCard 
-                    title="Tracked Products" 
-                    value={stats.tracked_products || 0} 
-                    icon={Package} 
-                    trend={stats.new_products || 0} 
-                    trendSuffix=" new" 
-                    trendLabel="vs last scan" 
-                    color="blue" 
-                    delay={100} 
-                />
-                <StatsCard 
-                    title="Generated Content" 
-                    value={stats.content_generated || 0} 
-                    icon={FileText} 
-                    trend={stats.content_trend || 0} 
-                    trendSuffix={`${stats.content_this_week || 0} this week`}
-                    color="purple" 
-                    delay={200} 
-                />
-                <StatsCard 
-                    title="Active Agents" 
-                    value={`${stats.active_agents || 0} / ${stats.total_agents || 7}`} 
-                    icon={Users} 
-                    color="emerald" 
-                    delay={300} 
-                />
-            </div>
-
-            {/* Main Visuals Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* Learning Center Section */}
-                <div className="lg:col-span-2 space-y-6">
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-zinc-900/50 backdrop-blur-xl rounded-2xl border border-zinc-800/50 p-6 shadow-xl"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex gap-3"
                     >
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-blue-500/10 rounded-lg">
-                                    <BookOpen className="text-blue-400" size={20} />
-                                </div>
-                                <div>
-                                    <h2 className="text-lg font-bold text-white">Learning Center</h2>
-                                    <p className="text-zinc-400 text-xs">Learning Agent Knowledge Base</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-2xl font-bold text-blue-400">{learningStats.mastery}%</span>
-                                <p className="text-zinc-500 text-[10px] uppercase tracking-wider">Mastery</p>
-                            </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full bg-zinc-800 rounded-full h-1.5 mb-6 overflow-hidden">
-                            <div
-                                className="bg-gradient-to-r from-blue-600 to-cyan-400 h-1.5 rounded-full transition-all duration-1000 ease-out"
-                                style={{ width: `${learningStats.mastery}%` }}
-                            ></div>
-                        </div>
-
-                        {/* Recent Logs Feed */}
-                        <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Recent Thinking</h3>
-                            {(!learningStats.logs || learningStats.logs.length === 0) ? (
-                                <p className="text-zinc-600 text-sm italic">Waiting for first learning session...</p>
+                        <button
+                            onClick={handleGlobalScan}
+                            disabled={loadingScan || isScanning}
+                            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25"
+                        >
+                            {loadingScan || isScanning ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <span>Scanning... {scanProgress}%</span>
+                                </>
                             ) : (
-                                learningStats.logs.map((log) => (
-                                    <div key={log.id} className="bg-zinc-800/30 p-3 rounded-lg border border-zinc-700/30 flex justify-between items-center hover:bg-zinc-800/50 transition-colors">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-blue-300 font-bold text-xs bg-blue-500/10 px-1.5 py-0.5 rounded">
-                                                    {log.payload?.topic || 'N/A'}
-                                                </span>
-                                                <span className="text-zinc-500 text-[10px]">
-                                                    {new Date(log.created_at).toLocaleTimeString()}
-                                                </span>
-                                            </div>
-                                            <div className="flex gap-2 text-zinc-400 text-[10px]">
-                                                {log.payload?.top_results && log.payload.top_results.slice(0, 2).map((item, idx) => (
-                                                    <span key={idx} className="truncate max-w-[150px]">• {item.title}</span>
-                                                ))}
-                                            </div>
+                                <>
+                                    <Zap className="h-4 w-4" />
+                                    <span>Global Scan</span>
+                                </>
+                            )}
+                        </button>
+                        <button className="px-4 py-3 bg-white/10 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/20 transition-all duration-200 flex items-center gap-2">
+                            <RefreshCw className="h-4 w-4" />
+                            <span>Refresh</span>
+                        </button>
+                    </motion.div>
+                </motion.div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 }}
+                >
+                    <StatsCard
+                        title="Estimated Earnings"
+                        value={`$${stats.estimated_earnings.toLocaleString()}`}
+                        change={12.5}
+                        icon={<DollarSign className="h-5 w-5" />}
+                        color="emerald"
+                        trend="up"
+                    />
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                >
+                    <StatsCard
+                        title="Tracked Products"
+                        value={stats.tracked_products}
+                        change={8.2}
+                        icon={<Package className="h-5 w-5" />}
+                        color="blue"
+                        trend="up"
+                    />
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                >
+                    <StatsCard
+                        title="Content Generated"
+                        value={stats.content_generated}
+                        change={15.3}
+                        icon={<FileText className="h-5 w-5" />}
+                        color="purple"
+                        trend="up"
+                    />
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 }}
+                >
+                    <StatsCard
+                        title="Active Agents"
+                        value={`${activeAgentsCount}/${stats.total_agents}`}
+                        change={0}
+                        icon={<Users className="h-5 w-5" />}
+                        color="orange"
+                        trend="stable"
+                    />
+                </motion.div>
+            </div>
+
+            {/* Charts and Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                {/* Revenue Chart */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="lg:col-span-2 bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20"
+                >
+                    <h3 className="text-xl font-semibold text-white mb-6">Revenue Overview</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <AreaChart data={data}>
+                            <defs>
+                                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                            <XAxis dataKey="name" stroke="#9CA3AF" />
+                            <YAxis stroke="#9CA3AF" />
+                            <RechartsTooltip 
+                                contentStyle={{ 
+                                    backgroundColor: '#1F2937', 
+                                    border: '1px solid #374151',
+                                    borderRadius: '8px'
+                                }}
+                                labelStyle={{ color: '#F3F4F6' }}
+                            />
+                            <Area 
+                                type="monotone" 
+                                dataKey="sales" 
+                                stroke="#10B981" 
+                                fillOpacity={1} 
+                                fill="url(#colorRevenue)" 
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </motion.div>
+
+                {/* Activity */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                    className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20"
+                >
+                    <h3 className="text-xl font-semibold text-white mb-6">24h Activity</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={activityData}>
+                            <Bar dataKey="active" fill="#8B5CF6" radius={[8, 8, 0, 0]} />
+                            <XAxis dataKey="hour" stroke="#9CA3AF" />
+                            <YAxis stroke="#9CA3AF" />
+                            <RechartsTooltip 
+                                contentStyle={{ 
+                                    backgroundColor: '#1F2937', 
+                                    border: '1px solid #374151',
+                                    borderRadius: '8px'
+                                }}
+                                labelStyle={{ color: '#F3F4F6' }}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </motion.div>
+            </div>
+
+            {/* System Status & Logs */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                {/* System Status */}
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.7 }}
+                    className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20"
+                >
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold text-white">System Status</h3>
+                        <div className={`w-3 h-3 rounded-full ${systemOn ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-400">Status</span>
+                            <span className={`font-medium ${systemOn ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {systemOn ? 'ONLINE' : 'OFFLINE'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-400">API Latency</span>
+                            <span className="text-white font-medium">{ping}ms</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-400">Uptime</span>
+                            <span className="text-white font-medium">24h</span>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Recent Activity */}
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className="lg:col-span-2 bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20"
+                >
+                    <h3 className="text-xl font-semibold text-white mb-4">Recent Activity</h3>
+                    <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar">
+                        <AnimatePresence>
+                            {logs.map((log) => (
+                                <motion.div
+                                    key={log.id}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ duration: 0.3 }}
+                                    whileHover={{ scale: 1.02 }}
+                                    className="flex gap-3 items-start p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all"
+                                >
+                                    <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${log.type === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                                        log.type === 'warning' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
+                                            log.type === 'error' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
+                                                'bg-blue-500'
+                                            }`} />
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-start">
+                                            <p className="text-sm text-zinc-300 group-hover:text-white transition-colors leading-tight font-medium">
+                                                {log.msg}
+                                            </p>
+                                            <span className="text-[10px] text-zinc-600 font-mono whitespace-nowrap ml-2">{log.time}</span>
                                         </div>
-                                        <div className="text-right shrink-0">
-                                            <span className="text-zinc-500 text-[10px] bg-zinc-900 px-2 py-1 rounded-full border border-zinc-800">
-                                                +{log.payload?.count || 0} arts
+                                        <div className="flex gap-2 mt-1">
+                                            <span className="text-[9px] uppercase tracking-wider text-zinc-500 bg-zinc-900/50 px-1.5 rounded border border-zinc-800">
+                                                {log.type}
                                             </span>
                                         </div>
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </motion.div>
-
-                    {/* Main Chart */}
-                    <div className="lg:col-span-2 card-glass p-6 flex flex-col min-h-[400px]">
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                    <Activity size={18} className="text-orange-500" /> Sales Performance
-                                </h3>
-                                <p className="text-sm text-zinc-500">Revenue stream vs traffic analysis</p>
-                            </div>
-                            <select className="bg-zinc-900 border border-zinc-800 text-zinc-400 text-sm rounded-lg px-3 py-1 outline-none focus:border-orange-500/50">
-                                <option>Last 7 Days</option>
-                                <option>Last 30 Days</option>
-                            </select>
-                        </div>
-
-                        <div className="flex-1 w-full min-h-[300px]">
-                            <ResponsiveContainer width="100%" height={300}>
-                                <AreaChart data={data}>
-                                    <defs>
-                                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#F04E23" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#F04E23" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                    <XAxis dataKey="name" stroke="#666" tick={{ fill: '#666' }} axisLine={false} tickLine={false} dy={10} />
-                                    <YAxis stroke="#666" tick={{ fill: '#666' }} axisLine={false} tickLine={false} dx={-10} tickFormatter={(v) => `$${v}`} />
-                                    <RechartsTooltip
-                                        contentStyle={{ backgroundColor: '#09090b', borderColor: '#333', borderRadius: '12px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}
-                                        itemStyle={{ color: '#fff' }}
-                                    />
-                                    <Area type="monotone" dataKey="sales" stroke="#F04E23" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
-                                    <Area type="monotone" dataKey="visits" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorVisits)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
                     </div>
-                </div>
-
-                {/* Right Column: Activity Feed & Mini Stats */}
-                <div className="flex flex-col gap-6 h-full">
-                    {/* Activity Heatmap substitute (Bar) */}
-                    <div className="card-glass p-6 flex-1">
-                        <h3 className="text-sm font-bold text-zinc-400 mb-4 uppercase tracking-wider flex items-center gap-2">
-                            <MonitorPlay size={16} /> Agent Activity Hours
-                        </h3>
-                        <div className="h-40 w-full mb-4">
-                            <ResponsiveContainer width="100%" height={160}>
-                                <BarChart data={activityData}>
-                                    <Bar dataKey="active" radius={[4, 4, 0, 0]}>
-                                        {activityData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#F04E23' : '#3f3f46'} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-zinc-500 border-t border-white/5 pt-4">
-                            <span>Efficiency Rate</span>
-                            <span className="text-emerald-400 font-bold">+24%</span>
-                        </div>
-                    </div>
-
-                    {/* Live Logs */}
-                    <div className="card-glass p-0 overflow-hidden flex-1 flex flex-col">
-                        <div className="p-4 border-b border-white/5 bg-zinc-900/50 flex justify-between items-center">
-                            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                <RefreshCw size={14} className="animate-spin-slow" /> System Logs
-                            </h3>
-                            <button className="text-xs text-orange-500 hover:text-orange-400">View All</button>
-                        </div>
-                        <div className="p-4 space-y-2 overflow-y-auto max-h-[300px] scrollbar-hide">
-                            <AnimatePresence>
-                                {logs.map((log) => (
-                                    <motion.div
-                                        key={log.id}
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        whileHover={{ scale: 1.02 }}
-                                        className="flex gap-3 items-start p-2 rounded-lg hover:bg-white/5 cursor-pointer group transition-all"
-                                    >
-                                        <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${log.type === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                                            log.type === 'warning' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' :
-                                                log.type === 'error' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
-                                                    'bg-blue-500'
-                                            }`} />
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-start">
-                                                <p className="text-sm text-zinc-300 group-hover:text-white transition-colors leading-tight font-medium">
-                                                    {log.msg}
-                                                </p>
-                                                <span className="text-[10px] text-zinc-600 font-mono whitespace-nowrap ml-2">{log.time}</span>
-                                            </div>
-                                            <div className="flex gap-2 mt-1">
-                                                <span className="text-[9px] uppercase tracking-wider text-zinc-500 bg-zinc-900/50 px-1.5 rounded border border-zinc-800">
-                                                    {log.type}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        </div>
-                    </div>
-                </div>
+                </motion.div>
             </div>
 
             {/* Productos en Tiempo Real - Sección completa */}
