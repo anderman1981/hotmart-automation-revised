@@ -16,10 +16,10 @@ const Sidebar = () => {
         <aside className="w-72 bg-zinc-900/50 backdrop-blur-xl border-r border-white/5 h-screen flex flex-col p-6 fixed top-0 left-0 z-50 transition-all duration-300">
             <div className="flex items-center gap-3 mb-10 px-2 mt-2">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-red-600 flex items-center justify-center shadow-lg shadow-orange-900/20">
-                    <span className="text-white font-bold text-xl font-display">H</span>
+                    <span className="text-white font-bold text-xl font-display">AMR</span>
                 </div>
                 <div>
-                    <h1 className="text-xl font-display font-bold text-white tracking-tight">Hotmart</h1>
+                    <h1 className="text-xl font-display font-bold text-white tracking-tight">AMROSAI</h1>
                     <p className="text-xs text-zinc-500 font-medium">Automation Agent</p>
                 </div>
             </div>

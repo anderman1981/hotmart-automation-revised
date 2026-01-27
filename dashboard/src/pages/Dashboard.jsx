@@ -125,44 +125,6 @@ const Dashboard = () => {
             }, 2000);
         }
     };
-                
-                // Start polling after initial delay
-                setTimeout(pollScan, 5000);
-                
-            } else {
-                const errorData = await res.json();
-                toast.error(errorData.error || 'Scan failed to start', { id: toastId });
-                setLoadingScan(false);
-            }
-        } catch (error) {
-            console.error('Error starting global scan:', error);
-            
-            // Enhanced fallback simulation
-            setTimeout(async () => {
-                try {
-                    // Simulate adding some products to make the scan feel real
-                    const mockResult = {
-                        new_products: Math.floor(Math.random() * 15) + 5, // 5-20 new products
-                        message: 'Mock scan completed for demonstration'
-                    };
-                    
-                    toast.success(`✅ Scan completed! Found ${mockResult.new_products} new products.`, { id: toastId });
-                    
-                    // Update stats to reflect new products
-                    setStats(prev => ({
-                        ...prev,
-                        tracked_products: prev.tracked_products + mockResult.new_products,
-                        new_products: mockResult.new_products
-                    }));
-                    
-                    setLoadingScan(false);
-                } catch (fallbackError) {
-                    toast.error('Scan simulation failed', { id: toastId });
-                    setLoadingScan(false);
-                }
-            }, 3000);
-        }
-    };
 
     const fetchStats = async () => {
         try {
