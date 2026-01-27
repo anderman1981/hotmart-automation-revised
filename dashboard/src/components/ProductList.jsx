@@ -3,470 +3,290 @@ import { Package, Clock, TrendingUp, AlertCircle, CheckCircle, Activity, Search,
 
 const ProductList = ({ isScanning = false, scanProgress = 0 }) => {
     const [products, setProducts] = useState([]);
-    const [totalFound, setTotalFound] = useState(0);
-    const [realtimeUpdates, setRealtimeUpdates] = useState([]);
-    const [currentScanCount, setCurrentScanCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
     const pollingRef = useRef(null);
     const scanIntervalRef = useRef(null);
 
-    // Base de productos de muestra para simulación
-    const sampleProducts = [
-        {
-            name: "Excel para Negocios",
-            description: "Super Mega Pack de Cursos Online con más de 1000 cursos y e-books en múltiples categorías. Acceso de por vida sin restricciones.",
-            price: 47.00,
-            category: "Productividad",
-            score: 85,
-            status: "detected"
-        },
-        {
-            name: "Curso de Manicure Ruso",
-            description: "Academia de Traffickers Digital diseñada para dominar el tráfico pago y ver resultados concretos.",
-            price: 97.00,
-            category: "Belleza",
-            score: 78,
-            status: "detected"
-        },
-        {
-            name: "The Secret Of Digital 1.0",
-            description: "Curso completo de Marketing Digital con más de 90 módulos, acceso de por vida y comunidad exclusiva.",
-            price: 197.00,
-            category: "Marketing",
-            score: 92,
-            status: "detected"
-        },
-        {
-            name: "Negocio de la Sublimacion",
-            description: "Curso de Marketing Digital con derechos de reventa, acceso en 6 idiomas y comunidad privada.",
-            price: 37.00,
-            category: "Negocios",
-            score: 73,
-            status: "detected"
-        },
-        {
-            name: "Cake Designer",
-            description: "Pack de productos digitales con recetas gourmet para emprendedores del sector culinario.",
-            price: 27.00,
-            category: "Cocina",
-            score: 68,
-            status: "detected"
-        },
-        {
-            name: "Te vas a Transformar",
-            description: "Treinamento funcional completo com foco em saúde e bem-estar, incluindo planos alimentares e rotinas de exercícios.",
-            price: 87.00,
-            category: "Fitness",
-            score: 81,
-            status: "detected"
-        },
-        {
-            name: "IA HEROES PRO",
-            description: "Curso completo de Inteligência Artificial aplicada com exemplos práticos e projetos do mundo real. Baseado na metodologia dos 3Ps.",
-            price: 297.00,
-            category: "Tecnología",
-            score: 95,
-            status: "detected"
-        },
-        {
-            name: "Trading Pro Max",
-            description: "Sistema completo de trading con análisis técnico y señales en tiempo real para criptomonedas y forex.",
-            price: 497.00,
-            category: "Finanzas",
-            score: 88,
-            status: "detected"
-        },
-        {
-            name: "Master TikTok Ads",
-            description: "Curso especializado en publicidad en TikTok con casos de éxito y plantillas listas para usar.",
-            price: 127.00,
-            category: "Marketing",
-            score: 76,
-            status: "detected"
-        },
-        {
-            name: "E-commerce Elite",
-            description: "Método completo para crear y escalar tiendas online con productos de alta demanda.",
-            price: 197.00,
-            category: "E-commerce",
-            score: 83,
-            status: "detected"
+    // Fetch products from API
+    const fetchProducts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            setProducts(data.products || []);
+            console.log('📦 Products loaded:', data.products?.length || 0);
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            setError(error.message);
+            // Set empty products on error
+            setProducts([]);
+        } finally {
+            setLoading(false);
         }
-    ];
-
-    // Función para generar un producto aleatorio
-    const generateRandomProduct = () => {
-        const baseProduct = sampleProducts[Math.floor(Math.random() * sampleProducts.length)];
-        const variations = [
-            " 2.0", " PRO", " Advanced", " Master", " Elite", " Plus", " Max", " Premium", " Deluxe", " Ultimate"
-        ];
-        const randomVariation = variations[Math.floor(Math.random() * variations.length)];
-        
-        return {
-            ...baseProduct,
-            id: Date.now() + Math.random(),
-            name: Math.random() > 0.7 ? baseProduct.name + randomVariation : baseProduct.name,
-            price: parseFloat((baseProduct.price * (0.8 + Math.random() * 0.4)).toFixed(2)),
-            score: Math.floor(60 + Math.random() * 35),
-            status: 'processing',
-            detected_at: new Date().toISOString()
-        };
     };
 
-    // Función para generar mensaje de actividad
-    const generateActivityMessage = (product, stage) => {
-        const messages = {
-            detecting: [
-                `🔍 Buscando productos en marketplace...`,
-                `📊 Analizando categorías populares...`,
-                `🎯 Enfocando en productos de alto rendimiento...`,
-                `🔎 Escaneando nuevas ofertas...`
-            ],
-            found: [
-                `🎯 Producto detectado: ${product.name}`,
-                `✨ Nuevo producto encontrado: ${product.category}`,
-                `📦 Oportunidad identificada: ${product.name}`,
-                `💎 Producto premium localizado: ${product.name}`
-            ],
-            analyzing: [
-                `⚡ Analizando métricas de ${product.name}...`,
-                `📈 Calculando score de rendimiento...`,
-                `🔍 Validando calidad del producto...`,
-                `📊 Procesando datos del producto...`
-            ],
-            completed: [
-                `✅ ${product.name} guardado exitosamente`,
-                `🎉 Producto archivado en base de datos`,
-                `💾 ${product.name} listo para revisión`,
-                `🚀 Producto agregado al sistema`
-            ]
-        };
+    // Poll for real-time updates during scanning
+    const startRealtimeUpdates = () => {
+        if (pollingRef.current) clearInterval(pollingRef.current);
         
-        const stageMessages = messages[stage] || messages.found;
-        return stageMessages[Math.floor(Math.random() * stageMessages.length)];
-    };
-
-    // Efecto para simular scraping en tiempo real
-    useEffect(() => {
-        if (isScanning) {
-            let foundProducts = [];
-            let productCount = 0;
-            
-            // Simular descubrimiento de productos
-            scanIntervalRef.current = setInterval(() => {
-                if (productCount >= 8 + Math.floor(Math.random() * 7)) { // 8-14 productos
-                    clearInterval(scanIntervalRef.current);
-                    return;
-                }
-                
-                const newProduct = generateRandomProduct();
-                foundProducts.push(newProduct);
-                productCount++;
-                
-                // Actualizar productos detectados
-                setProducts(prev => [...prev, newProduct]);
-                setTotalFound(productCount);
-                setCurrentScanCount(productCount);
-                
-                // Agregar actividad de detección
-                setRealtimeUpdates(prev => [
-                    {
-                        type: 'success',
-                        message: generateActivityMessage(newProduct, 'found'),
-                        timestamp: new Date().toISOString()
-                    },
-                    ...prev
-                ].slice(0, 10));
-                
-                // Simular análisis del producto
-                setTimeout(() => {
-                    setProducts(prev => prev.map(p => 
-                        p.id === newProduct.id 
-                            ? { ...p, status: 'analyzing' }
-                            : p
-                    ));
-                    
-                    setRealtimeUpdates(prev => [
-                        {
-                            type: 'processing',
-                            message: generateActivityMessage(newProduct, 'analyzing'),
-                            timestamp: new Date().toISOString()
-                        },
-                        ...prev
-                    ].slice(0, 10));
-                }, 1500);
-                
-                // Simular completado del procesamiento
-                setTimeout(() => {
-                    setProducts(prev => prev.map(p => 
-                        p.id === newProduct.id 
-                            ? { ...p, status: 'completed' }
-                            : p
-                    ));
-                    
-                    setRealtimeUpdates(prev => [
-                        {
-                            type: 'success',
-                            message: generateActivityMessage(newProduct, 'completed'),
-                            timestamp: new Date().toISOString()
-                        },
-                        ...prev
-                    ].slice(0, 10));
-                }, 3000);
-                
-            }, 2000 + Math.random() * 2000); // Cada 2-4 segundos
-            
-        } else {
-            if (scanIntervalRef.current) {
-                clearInterval(scanIntervalRef.current);
-            }
-        }
-
-        return () => {
-            if (scanIntervalRef.current) {
-                clearInterval(scanIntervalRef.current);
-            }
-        };
-    }, [isScanning]);
-
-    // Efecto para cargar productos iniciales
-    useEffect(() => {
-        const loadInitialProducts = async () => {
+        pollingRef.current = setInterval(async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products?limit=20`);
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products`);
                 const data = await response.json();
-                
-                if (Array.isArray(data)) {
-                    setProducts(data.slice(0, 10)); // Mostrar solo los 10 más recientes
-                    setTotalFound(data.length);
-                }
+                setProducts(data.products || []);
             } catch (error) {
-                console.error('Error loading initial products:', error);
+                console.log('Realtime update error:', error);
             }
-        };
+        }, 3000); // Poll every 3 seconds during scanning
+    };
 
-        loadInitialProducts();
+    // Stop real-time updates
+    const stopRealtimeUpdates = () => {
+        if (pollingRef.current) {
+            clearInterval(pollingRef.current);
+            pollingRef.current = null;
+        }
+    };
+
+    // Initial load and updates
+    useEffect(() => {
+        fetchProducts();
+        
+        return () => {
+            stopRealtimeUpdates();
+        };
     }, []);
 
-    const getStatusIcon = (status) => {
+    // Handle scanning state changes
+    useEffect(() => {
+        if (isScanning) {
+            startRealtimeUpdates();
+        } else {
+            stopRealtimeUpdates();
+            // Final refresh when scanning stops
+            setTimeout(fetchProducts, 2000);
+        }
+    }, [isScanning]);
+
+    // Filter products based on search and status
+    const filteredProducts = products.filter(product => {
+        const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           product.niche?.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesStatus = filterStatus === 'all' || product.status === filterStatus;
+        
+        return matchesSearch && matchesStatus;
+    });
+
+    // Get status icon and color
+    const getStatusInfo = (status) => {
         switch (status) {
-            case 'processing':
-                return <Activity className="w-4 h-4 text-yellow-500 animate-pulse" />;
-            case 'analyzing':
-                return <Zap className="w-4 h-4 text-orange-500 animate-pulse" />;
-            case 'completed':
-                return <CheckCircle className="w-4 h-4 text-green-500" />;
-            case 'error':
-                return <AlertCircle className="w-4 h-4 text-red-500" />;
+            case 'active':
+            case 'tracking':
+                return { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-100', text: 'Activo' };
+            case 'testing':
+                return { icon: Activity, color: 'text-blue-500', bg: 'bg-blue-100', text: 'Testing' };
+            case 'cold':
+                return { icon: Clock, color: 'text-gray-500', bg: 'bg-gray-100', text: 'Inactivo' };
+            case 'pending':
+                return { icon: AlertCircle, color: 'text-yellow-500', bg: 'bg-yellow-100', text: 'Pendiente' };
             default:
-                return <Search className="w-4 h-4 text-blue-500" />;
+                return { icon: Package, color: 'text-gray-500', bg: 'bg-gray-100', text: status };
         }
     };
 
-    const getStatusText = (status) => {
-        switch (status) {
-            case 'processing':
-                return 'Detectando...';
-            case 'analyzing':
-                return 'Analizando...';
-            case 'completed':
-                return 'Completado';
-            case 'error':
-                return 'Error';
-            default:
-                return 'Nuevo';
-        }
+    // Format price
+    const formatPrice = (price) => {
+        if (!price) return '$0.00';
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(price);
     };
+
+    if (loading && !products.length) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                <span className="ml-3 text-gray-600">Cargando productos...</span>
+            </div>
+        );
+    }
+
+    if (error && !products.length) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64">
+                <AlertCircle className="h-12 w-12 text-red-500 mb-3" />
+                <p className="text-red-600 font-medium">Error al cargar productos</p>
+                <p className="text-gray-500 text-sm mt-1">{error}</p>
+                <button 
+                    onClick={fetchProducts}
+                    className="mt-3 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                    Reintentar
+                </button>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            {/* Header con contador y progreso */}
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <Package className="text-orange-500 w-6 h-6" />
-                        <div>
-                            <h3 className="text-xl font-bold text-white">Productos en Tiempo Real</h3>
-                            <p className="text-zinc-400 text-sm">
-                                {isScanning ? (
-                                    <span className="flex items-center gap-2">
-                                        <Database className="w-4 h-4 text-green-500 animate-pulse" />
-                                        Scraping activo - Detectando productos...
-                                    </span>
-                                ) : 'Últimos productos detectados'}
-                            </p>
-                        </div>
+        <div className="p-6">
+            {/* Header with search and filters */}
+            <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Productos Hotmart</h2>
+                    <p className="text-gray-600 mt-1">
+                        {filteredProducts.length} de {products.length} productos
+                        {isScanning && ` · Escaneando ${scanProgress}%`}
+                    </p>
+                </div>
+                
+                <div className="flex gap-3">
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <input
+                            type="text"
+                            placeholder="Buscar productos..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
                     </div>
                     
-                    <div className="text-right">
-                        <div className="flex items-center gap-2">
-                            {isScanning && currentScanCount > 0 && (
-                                <div className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium animate-pulse">
-                                    +{currentScanCount} nuevos
-                                </div>
-                            )}
-                            <div className="text-3xl font-bold text-white">{totalFound}</div>
-                        </div>
-                        <div className="text-sm text-zinc-400">
-                            {isScanning ? 'productos esta sesión' : 'productos totales'}
-                        </div>
-                    </div>
+                    {/* Status filter */}
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    >
+                        <option value="all">Todos los estados</option>
+                        <option value="active">Activos</option>
+                        <option value="testing">Testing</option>
+                        <option value="cold">Inactivos</option>
+                        <option value="pending">Pendientes</option>
+                    </select>
                 </div>
-
-                {/* Barra de progreso */}
-                {isScanning && (
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-zinc-400">Progreso del scraping</span>
-                            <span className="text-orange-400 font-medium">{scanProgress}%</span>
-                        </div>
-                        <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
-                            <div 
-                                className="h-full bg-gradient-to-r from-orange-500 to-red-500 rounded-full transition-all duration-300 ease-out"
-                                style={{ width: `${scanProgress}%` }}
-                            >
-                                <div className="h-full bg-white/20 animate-pulse"></div>
-                            </div>
-                        </div>
-                        {currentScanCount > 0 && (
-                            <div className="text-xs text-green-400 font-medium">
-                                {currentScanCount} productos detectados hasta el momento
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
-            {/* Lista de productos en tiempo real */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Productos actuales */}
-                <div className="space-y-4">
-                    <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Package className="text-orange-500 w-5 h-5" />
-                        Productos Detectados
-                        {isScanning && (
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        )}
-                    </h4>
+            {/* Products Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredProducts.map((product) => {
+                    const statusInfo = getStatusInfo(product.status);
+                    const StatusIcon = statusInfo.icon;
                     
-                    <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-                        {products.length === 0 ? (
-                            <div className="text-center py-8 text-zinc-500 border border-dashed border-zinc-800 rounded-lg">
-                                {isScanning ? 'Buscando productos...' : 'No hay productos para mostrar'}
+                    return (
+                        <div key={product.id || product.hotmart_id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-lg transition-shadow">
+                            {/* Header */}
+                            <div className="flex justify-between items-start mb-3">
+                                <h3 className="font-semibold text-gray-900 line-clamp-2 flex-1 mr-2">
+                                    {product.name || 'Sin nombre'}
+                                </h3>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.color}`}>
+                                    <StatusIcon className="h-3 w-3 mr-1" />
+                                    {statusInfo.text}
+                                </span>
                             </div>
-                        ) : (
-                            products.map((product, index) => (
-                                <div 
-                                    key={product.id || index}
-                                    className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 hover:border-orange-500/30 transition-all hover:scale-[1.02] animate-fade-in"
-                                    style={{ animationDelay: `${index * 100}ms` }}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                {getStatusIcon(product.status)}
-                                                <h5 className="font-medium text-white truncate">{product.name}</h5>
-                                            </div>
-                                            
-                                            <p className="text-sm text-zinc-400 line-clamp-2 mb-2">
-                                                {product.description || 'Producto detectado automáticamente'}
-                                            </p>
-                                            
-                                            <div className="flex items-center gap-4 text-xs">
-                                                {product.price && (
-                                                    <span className="text-green-400 font-medium">
-                                                        ${parseFloat(product.price).toFixed(2)}
-                                                    </span>
-                                                )}
-                                                
-                                                {product.category && (
-                                                    <span className="bg-zinc-700 text-zinc-300 px-2 py-1 rounded">
-                                                        {product.category}
-                                                    </span>
-                                                )}
-                                                
-                                                <span className="text-zinc-500">
-                                                    {getStatusText(product.status)}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        
-                                        {product.score && (
-                                            <div className="text-right flex-shrink-0">
-                                                <div className={`text-lg font-bold ${
-                                                    product.score >= 70 ? 'text-green-400' : 
-                                                    product.score >= 40 ? 'text-yellow-400' : 'text-red-400'
-                                                }`}>
-                                                    {parseFloat(product.score).toFixed(1)}%
-                                                </div>
-                                                <div className="text-xs text-zinc-500">Score</div>
-                                            </div>
-                                        )}
+                            
+                            {/* Description */}
+                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                                {product.description || 'Sin descripción'}
+                            </p>
+                            
+                            {/* Product Details */}
+                            <div className="space-y-2 text-sm">
+                                {product.price && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Precio:</span>
+                                        <span className="font-medium text-gray-900">{formatPrice(product.price)}</span>
                                     </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                {/* Actualizaciones en tiempo real */}
-                <div className="space-y-4">
-                    <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Activity className="text-green-500 w-5 h-5" />
-                        Actividad del Sistema
-                        {isScanning && (
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                        )}
-                    </h4>
-                    
-                    <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-                        {realtimeUpdates.length === 0 ? (
-                            <div className="text-center py-8 text-zinc-500 border border-dashed border-zinc-800 rounded-lg">
-                                {isScanning ? (
-                                    <div className="space-y-2">
-                                        <Database className="w-8 h-8 mx-auto text-zinc-600 animate-pulse" />
-                                        <p>Iniciando sistema de detección...</p>
+                                )}
+                                
+                                {product.niche && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Categoría:</span>
+                                        <span className="text-gray-900 capitalize">{product.niche}</span>
                                     </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <Search className="w-8 h-8 mx-auto text-zinc-600" />
-                                        <p>Sin actividad reciente</p>
-                                        <p className="text-xs">Inicia un scraping para ver actividad</p>
+                                )}
+                                
+                                {product.performance_score && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Score:</span>
+                                        <span className="text-gray-900">{Math.round(product.performance_score)}%</span>
+                                    </div>
+                                )}
+                                
+                                {product.created_at && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Creado:</span>
+                                        <span className="text-gray-900">
+                                            {new Date(product.created_at).toLocaleDateString()}
+                                        </span>
                                     </div>
                                 )}
                             </div>
-                        ) : (
-                            realtimeUpdates.map((update, index) => (
-                                <div 
-                                    key={`${update.timestamp}-${index}`}
-                                    className={`bg-zinc-800/30 border rounded-lg p-3 animate-fade-in ${
-                                        update.type === 'processing' ? 'border-orange-500/30' :
-                                        update.type === 'success' ? 'border-green-500/30' :
-                                        'border-zinc-700'
-                                    }`}
-                                    style={{ animationDelay: `${index * 50}ms` }}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        {update.type === 'processing' ? (
-                                            <Zap className="w-4 h-4 text-orange-500 animate-pulse flex-shrink-0 mt-0.5" />
-                                        ) : update.type === 'success' ? (
-                                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                                        ) : (
-                                            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                                        )}
-                                        <div className="flex-1">
-                                            <p className="text-sm text-zinc-300 leading-relaxed">{update.message}</p>
-                                            <p className="text-xs text-zinc-500 mt-1">
-                                                {new Date(update.timestamp).toLocaleTimeString()}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="mt-4 flex gap-2">
+                                {product.url_sales_page && (
+                                    <a
+                                        href={product.url_sales_page}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 text-center px-3 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors"
+                                    >
+                                        Ver Producto
+                                    </a>
+                                )}
+                                
+                                {product.selected_for_tracking && (
+                                    <button 
+                                        className="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
+                                        title="Seleccionado para seguimiento"
+                                    >
+                                        <TrendingUp className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
 
+            {/* Empty State */}
+            {!loading && filteredProducts.length === 0 && (
+                <div className="text-center py-12">
+                    <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        {searchTerm || filterStatus !== 'all' ? 'No hay productos que coincidan' : 'No hay productos disponibles'}
+                    </h3>
+                    <p className="text-gray-500">
+                        {searchTerm ? 'Intenta con otra búsqueda' : 
+                         filterStatus !== 'all' ? 'Intenta con otro filtro' : 
+                         'Inicia un escaneo para descubrir productos'}
+                    </p>
+                </div>
+            )}
+
+            {/* Loading overlay during updates */}
+            {loading && products.length > 0 && (
+                <div className="fixed top-0 right-0 p-4">
+                    <div className="bg-white rounded-lg shadow-lg p-3 flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
+                        <span className="text-sm text-gray-600">Actualizando...</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
