@@ -55,6 +55,7 @@ const Dashboard = () => {
     const [systemOn, setSystemOn] = useState(true);
     const [scanProgress, setScanProgress] = useState(0);
     const [isScanning, setIsScanning] = useState(false);
+    const [scanResult, setScanResult] = useState(null);
 
     const handleSystemToggle = async () => {
         const action = systemOn ? 'stopping' : 'starting';
@@ -121,30 +122,31 @@ const Dashboard = () => {
                     setLoadingScan(false);
                     setIsScanning(false);
                     setScanProgress(0);
+                    // Clear scan result after 10 seconds
+                    setTimeout(() => setScanResult(null), 10000);
+                    setScanProgress(0);
+                    // Clear scan result after 10 seconds
+                    setTimeout(() => setScanResult(null), 10000);
                     
                     console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
-                }, 500);
-            }, 4000);
-            
-        } catch (error) {
-            console.error('Error starting global scan:', error);
-            
-            // Enhanced fallback simulation
-            setTimeout(() => {
-                const mockProducts = Math.floor(Math.random() * 15) + 8; // 8-22 new products
-                
-                toast.success(`✅ Global scan completed! Found ${mockProducts} new products.`, { id: toastId });
-                
-                // Update stats to reflect new products
-                setStats(prev => ({
-                    ...prev,
-                    tracked_products: prev.tracked_products + mockProducts,
-                    new_products: mockProducts
-                }));
-                
-                setLoadingScan(false);
-                
-                console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
+                    
+                    // Set scan result for ProductList
+                    setScanResult({
+                        new_products: mockProducts,
+                        total_products: mockProducts,
+                        scan_time: new Date().toISOString()
+                    });
+                    
+                    // Set scan result for ProductList
+                    setScanResult({
+                        new_products: mockProducts,
+                        total_products: mockProducts,
+                        scan_time: new Date().toISOString()
+                    });
+                    
+                    setLoadingScan(false);
+                    
+                    console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
             }, 2000);
         }
     };
@@ -484,7 +486,7 @@ const Dashboard = () => {
                 transition={{ delay: 0.3 }}
                 className="space-y-6"
             >
-                <ProductList isScanning={isScanning} scanProgress={scanProgress} />
+                <ProductList isScanning={isScanning} scanProgress={scanProgress} scanResult={scanResult} />
             </motion.div>
         </div>
     );
