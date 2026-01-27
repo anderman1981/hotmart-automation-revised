@@ -299,7 +299,7 @@ const Dashboard = () => {
             </div>
 
             {/* Main Visuals Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[450px]">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Learning Center Section */}
                 <div className="lg:col-span-2 space-y-6">
@@ -477,8 +477,15 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Productos en Tiempo Real */}
-            <ProductList isScanning={isScanning} scanProgress={scanProgress} />
+            {/* Productos en Tiempo Real - Sección completa */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="space-y-6"
+            >
+                <ProductList isScanning={isScanning} scanProgress={scanProgress} />
+            </motion.div>
         </div>
     );
 };
