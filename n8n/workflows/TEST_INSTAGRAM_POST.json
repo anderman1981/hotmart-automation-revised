@@ -1,0 +1,28 @@
+{
+  "name": "TEST_INSTAGRAM_POST",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Manual_Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Crear post de prueba para Instagram\nconst baseUrl = 'http://localhost:4123';\n\n// Contenido de prueba\nconst testContent = {\n  text: '🚀 Test post from Hotmart Automation #' + Date.now(),\n  type: 'text_only', // Puede ser 'text_only', 'image', 'carousel'\n  // Para imagen: 'image_url': 'https://example.com/image.jpg'\n};\n\ntry {\n  // Enviar al Instagram agent\n  const response = await fetch(`${baseUrl}/api/agents/instagram/start`, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ \n      source: 'manual_test',\n      content: testContent,\n      test_mode: true // Para que no publique realmente si está configurado\n    })\n  });\n  \n  const result = await response.json();\n  \n  return {\n    json: {\n      status: 'success',\n      message: '✅ Test post sent to Instagram agent',\n      content_sent: testContent,\n      agent_response: result,\n      timestamp: new Date().toISOString()\n    }\n  };\n  \n} catch (error) {\n  return {\n    json: {\n      status: 'error',\n      message: '❌ Failed to send test post',\n      error: error.message,\n      timestamp: new Date().toISOString()\n    }\n  };\n}"
+      },
+      "name": "Create_Test_Post",
+      "type": "n8n-nodes-base.function",
+      "position": [450, 300]
+    }
+  ],
+  "connections": {
+    "Manual_Trigger": {
+      "main": [[{ "node": "Create_Test_Post", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

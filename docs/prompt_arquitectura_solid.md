@@ -13,7 +13,7 @@ Actúa como un **Arquitecto de Software Senior** con más de 20 años de experie
 
 ---
 
-## 🎪 OBJETIVO
+## 🎯 OBJETIVO
 
 Generar la **estructura completa de un proyecto de software** que cumpla con:
 
@@ -24,6 +24,19 @@ Generar la **estructura completa de un proyecto de software** que cumpla con:
 5. ✅ **Separación de responsabilidades** clara
 6. ✅ **Testeable** al 100%
 7. ✅ **Documentación** incluida en código
+
+### 🔧 **HERRAMIENTAS INTEGRADAS**
+
+Este prompt integra automáticamente las siguientes herramientas especializadas:
+
+- 🏗️ **Validador de Arquitectura**: Para verificar escalabilidad y riesgos
+- 🔌 **Diseñador de APIs**: Para endpoints REST bien estructurados
+- ♻️ **Refactor de Código Legacy**: Para aplicar principios SOLID
+- 🗄️ **Optimizador de Base de Datos**: Para modelado eficiente
+- 🔒 **Auditor de Seguridad**: Para arquitectura segura desde el inicio
+- 🧪 **Generador de Tests**: Para cobertura completa
+
+Estas herramientas se aplicarán automáticamente durante la generación de la estructura.
 
 ---
 
@@ -939,6 +952,8 @@ project-name-frontend/
 ## 🚀 PROCESO DE GENERACIÓN
 
 ### PASO 1: ANÁLISIS DEL PROYECTO
+**🏗️ Aplicando: Validador de Arquitectura**
+
 Primero, analízame tu proyecto respondiendo:
 
 1. **Tipo de aplicación**:
@@ -978,16 +993,31 @@ Primero, analízame tu proyecto respondiendo:
 ---
 
 ### PASO 2: GENERACIÓN DE ESTRUCTURA
+**🔧 Aplicando: Todas las herramientas especializadas**
 
 Basándome en tus respuestas, generaré:
 
 1. ✅ **Estructura de carpetas completa** adaptada a tu stack
+   - 🏗️ Validada con: Validador de Arquitectura
+   
 2. ✅ **Implementación de SOLID** en cada capa
+   - ♻️ Aplicando: Refactor de Código Legacy (principios SOLID)
+   
 3. ✅ **Patrones de diseño** apropiados para tu caso
+   - 🏗️ Evaluado con: Validador de Arquitectura
+   
 4. ✅ **Código base** con ejemplos concretos
+   - 🔌 Incluyendo: Diseñador de APIs (para endpoints)
+   - 🗄️ Incluyendo: Optimizador de Base de Datos (para modelos)
+   
 5. ✅ **Configuraciones** necesarias
+   - 🔒 Validado con: Auditor de Seguridad
+   
 6. ✅ **Tests** de ejemplo
+   - 🧪 Generado con: Generador de Tests
+   
 7. ✅ **Documentación** de la arquitectura
+   - 🏗️ Basada en: Validador de Arquitectura
 
 ---
 
@@ -1061,6 +1091,46 @@ La estructura generada cumplirá con:
 - [ ] Patrones de cache implementados
 - [ ] Lazy loading donde aplique
 - [ ] Optimizaciones de performance
+
+---
+
+## 📚 **APÉNDICE: HERRAMIENTAS ESPECIALIZADAS**
+
+Este prompt integra automáticamente las 6 herramientas especializadas de Claude Code.
+Para consultar las especificaciones completas de cada herramienta, revisa:
+**`6_prompts_claude_code.md`**
+
+### Cómo se aplican las herramientas:
+
+1. **🏗️ Validador de Arquitectura**
+   - Se aplica al inicio para validar decisiones arquitectónicas
+   - Evalúa escalabilidad y puntos de fallo
+   - Genera recomendaciones de mejora
+
+2. **🔌 Diseñador de APIs**
+   - Se aplica al crear endpoints y controladores
+   - Asegura diseño RESTful coherente
+   - Genera documentación OpenAPI
+
+3. **♻️ Refactor de Código Legacy**
+   - Se aplica para asegurar principios SOLID
+   - Elimina code smells desde el diseño
+   - Valida separación de responsabilidades
+
+4. **🗄️ Optimizador de Base de Datos**
+   - Se aplica al diseñar el esquema de datos
+   - Optimiza índices y queries desde el inicio
+   - Previene problemas de performance
+
+5. **🔒 Auditor de Seguridad**
+   - Se aplica en todas las capas
+   - Valida security by design
+   - Implementa controles de seguridad
+
+6. **🧪 Generador de Tests**
+   - Se aplica para generar tests desde el inicio
+   - Asegura 80%+ de cobertura
+   - Crea estructura de testing completa
 
 ---
 

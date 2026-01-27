@@ -1,5 +1,5 @@
 {
-  "name": "ANTIGRAVITY_FULL_AUTO_LOOP",
+  "name": "HOTMART_AUTO_LOOP_FIXED",
   "nodes": [
     {
       "parameters": {
@@ -20,53 +20,37 @@
     },
     {
       "parameters": {
-        "url": "http://motor:4123/api/manager/run",
+        "url": "http://localhost:4126/api/generate",
         "method": "POST",
         "jsonParameters": true,
-        "options": {},
-        "bodyParametersJson": "{ \"mode\": \"FULL_AUTO\" }"
+        "bodyParametersJson": "{ \"model\": \"llama3.2\", \"prompt\": \"Analiza los productos hotmart y genera insights de marketing en 3 puntos clave\", \"stream\": false }"
       },
-      "name": "RUN_MANAGER_AGENT",
+      "name": "OLLAMA_ANALYSIS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
       "position": [450, 300]
     },
     {
       "parameters": {
-        "url": "http://motor:4123/api/instagram/publish",
+        "url": "http://localhost:4126/api/generate",
         "method": "POST",
         "jsonParameters": true,
-        "options": {},
-        "bodyParametersJson": "{ \"source\": \"manager\" }"
+        "bodyParametersJson": "{ \"model\": \"llama3.2\", \"prompt\": \"Crea un post de Instagram atractivo sobre productos hotmart con hashtags\", \"stream\": false }"
       },
-      "name": "INSTAGRAM_PUBLISH",
+      "name": "CONTENT_GENERATION",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
       "position": [700, 300]
     },
     {
       "parameters": {
-        "url": "http://motor:4123/api/metrics/collect",
-        "method": "POST",
-        "jsonParameters": true,
-        "options": {}
+        "url": "http://localhost:4123/api/products",
+        "method": "GET"
       },
-      "name": "COLLECT_METRICS",
+      "name": "CHECK_PRODUCTS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
       "position": [950, 300]
-    },
-    {
-      "parameters": {
-        "url": "http://motor:4123/api/metrics/feedback",
-        "method": "POST",
-        "jsonParameters": true,
-        "options": {}
-      },
-      "name": "FEEDBACK_LOOP",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 2,
-      "position": [1200, 300]
     }
   ],
   "connections": {
@@ -74,40 +58,29 @@
       "main": [
         [
           {
-            "node": "RUN_MANAGER_AGENT",
+            "node": "OLLAMA_ANALYSIS",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "RUN_MANAGER_AGENT": {
+    "OLLAMA_ANALYSIS": {
       "main": [
         [
           {
-            "node": "INSTAGRAM_PUBLISH",
+            "node": "CONTENT_GENERATION",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "INSTAGRAM_PUBLISH": {
+    "CONTENT_GENERATION": {
       "main": [
         [
           {
-            "node": "COLLECT_METRICS",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "COLLECT_METRICS": {
-      "main": [
-        [
-          {
-            "node": "FEEDBACK_LOOP",
+            "node": "CHECK_PRODUCTS",
             "type": "main",
             "index": 0
           }
@@ -115,7 +88,7 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1"
   }

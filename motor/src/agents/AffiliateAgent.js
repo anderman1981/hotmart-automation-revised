@@ -20,8 +20,8 @@ class AffiliateAgent {
         try {
             console.log(`🔗 Generating affiliate link for product: ${hotmartId}`);
             
-            // Generate Hotmart affiliate URL
-            const affiliateUrl = `https://pay.hotmart.com/${hotmartId}?ref=W949655431L`;
+            // Generate Hotmart affiliate URL with correct format
+            const affiliateUrl = `https://go.hotmart.com/${hotmartId}`;
             
             // Get product details to calculate commission
             const productResult = await this.pool.query(
