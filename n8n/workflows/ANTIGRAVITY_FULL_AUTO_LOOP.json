@@ -1,5 +1,5 @@
 {
-  "name": "ANTIGRAVITY_FULL_AUTO_LOOP",
+  "name": "ANTIGRAVITY_FULL_AUTO_LOOP_FIXED",
   "nodes": [
     {
       "parameters": {
@@ -15,7 +15,6 @@
       },
       "name": "CRON_LOOP",
       "type": "n8n-nodes-base.cron",
-      "typeVersion": 1,
       "position": [200, 300]
     },
     {
@@ -31,7 +30,6 @@
       },
       "name": "RUN_MANAGER_AGENT",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 2,
       "position": [450, 300]
     },
     {
@@ -47,7 +45,6 @@
       },
       "name": "INSTAGRAM_PUBLISH",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 2,
       "position": [700, 300]
     },
     {
@@ -57,20 +54,7 @@
       },
       "name": "COLLECT_METRICS",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 2,
       "position": [950, 300]
-    },
-    {
-      "parameters": {
-        "url": "http://localhost:4123/api/stats",
-        "method": "POST",
-        "jsonParameters": true,
-        "options": {}
-      },
-        "name": "COLLECT_METRICS",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 2,
-      "position": [1200, 300]
     }
   ],
   "connections": {
@@ -97,17 +81,6 @@
       ]
     },
     "INSTAGRAM_PUBLISH": {
-      "main": [
-        [
-          {
-            "node": "COLLECT_METRICS",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "COLLECT_METRICS": {
       "main": [
         [
           {
