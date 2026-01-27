@@ -45,10 +45,16 @@ Realizar un análisis exhaustivo y crítico del proyecto proporcionado, identifi
 
 ## METODOLOGÍA DE EVALUACIÓN
 
+<<<<<<< HEAD
+Analiza el proyecto siguiendo esta estructura detallada:
+
+### 📋 **1. ANÁLISIS DE CÓDIGO Y ARQUITECTURA**
+=======
 Analiza el proyecto siguiendo esta estructura detallada, **utilizando las 6 herramientas especializadas integradas** según corresponda:
 
 ### 📋 **1. ANÁLISIS DE CÓDIGO Y ARQUITECTURA**
 **🏗️ Utiliza: Validador de Arquitectura + Refactor de Código Legacy**
+>>>>>>> dev
 
 #### A. Estructura del Proyecto
 - [ ] Organización de carpetas y archivos
@@ -73,7 +79,10 @@ Analiza el proyecto siguiendo esta estructura detallada, **utilizando las 6 herr
 - [ ] APIs y contratos de servicio
 
 #### D. Seguridad
+<<<<<<< HEAD
+=======
 **🔒 Utiliza: Auditor de Seguridad**
+>>>>>>> dev
 - [ ] Vulnerabilidades conocidas (OWASP Top 10)
 - [ ] Autenticación y autorización
 - [ ] Validación de inputs
@@ -84,7 +93,10 @@ Analiza el proyecto siguiendo esta estructura detallada, **utilizando las 6 herr
 ---
 
 ### 🧪 **2. ANÁLISIS DE TESTING Y QA**
+<<<<<<< HEAD
+=======
 **🧪 Utiliza: Generador de Tests**
+>>>>>>> dev
 
 #### A. Cobertura de Pruebas
 - [ ] Porcentaje de cobertura de código
@@ -147,7 +159,10 @@ Analiza el proyecto siguiendo esta estructura detallada, **utilizando las 6 herr
 ---
 
 ### 🗄️ **4. ANÁLISIS DE BASE DE DATOS**
+<<<<<<< HEAD
+=======
 **🗄️ Utiliza: Optimizador de Base de Datos**
+>>>>>>> dev
 
 #### A. Modelado de Datos
 - [ ] Normalización apropiada (1NF, 2NF, 3NF, BCNF)
@@ -288,6 +303,11 @@ Links a documentación, herramientas o frameworks recomendados
 
 ---
 
+<<<<<<< HEAD
+## 🚀 **AUTOMATIZACIÓN Y ENTREGABLES EN GITHUB**
+
+Después de completar el análisis, **generaré automáticamente y subiré a GitHub**:
+=======
 ## 🔧 **HERRAMIENTAS ESPECIALIZADAS INTEGRADAS**
 
 Para realizar el análisis más exhaustivo, integro 6 herramientas especializadas de Claude Code:
@@ -339,6 +359,7 @@ Crea tests unitarios e integración listos para CI/CD.
 ## 🚀 **AUTOMATIZACIÓN Y ENTREGABLES EN GITHUB**
 
 Después de completar el análisis usando las herramientas especializadas, **generaré automáticamente y subiré a GitHub**:
+>>>>>>> dev
 
 ### 📁 **1. DOCUMENTACIÓN COMPLETA**
 
@@ -668,6 +689,8 @@ proyecto/
 
 ---
 
+<<<<<<< HEAD
+=======
 ---
 
 ## 📚 **APÉNDICE: PROMPTS ESPECIALIZADOS DETALLADOS**
@@ -684,6 +707,7 @@ Este documento contiene:
 
 ---
 
+>>>>>>> dev
 ## 🎬 **PROCESO DE ENTREGA**
 
 ### Paso 1: Análisis Completo

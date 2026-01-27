@@ -13,7 +13,11 @@ Actúa como un **Arquitecto de Software Senior** con más de 20 años de experie
 
 ---
 
+<<<<<<< HEAD
+## 🎪 OBJETIVO
+=======
 ## 🎯 OBJETIVO
+>>>>>>> dev
 
 Generar la **estructura completa de un proyecto de software** que cumpla con:
 
@@ -25,6 +29,8 @@ Generar la **estructura completa de un proyecto de software** que cumpla con:
 6. ✅ **Testeable** al 100%
 7. ✅ **Documentación** incluida en código
 
+<<<<<<< HEAD
+=======
 ### 🔧 **HERRAMIENTAS INTEGRADAS**
 
 Este prompt integra automáticamente las siguientes herramientas especializadas:
@@ -38,6 +44,7 @@ Este prompt integra automáticamente las siguientes herramientas especializadas:
 
 Estas herramientas se aplicarán automáticamente durante la generación de la estructura.
 
+>>>>>>> dev
 ---
 
 ## 📚 PRINCIPIOS SOLID A IMPLEMENTAR
@@ -952,8 +959,11 @@ project-name-frontend/
 ## 🚀 PROCESO DE GENERACIÓN
 
 ### PASO 1: ANÁLISIS DEL PROYECTO
+<<<<<<< HEAD
+=======
 **🏗️ Aplicando: Validador de Arquitectura**
 
+>>>>>>> dev
 Primero, analízame tu proyecto respondiendo:
 
 1. **Tipo de aplicación**:
@@ -993,11 +1003,22 @@ Primero, analízame tu proyecto respondiendo:
 ---
 
 ### PASO 2: GENERACIÓN DE ESTRUCTURA
+<<<<<<< HEAD
+=======
 **🔧 Aplicando: Todas las herramientas especializadas**
+>>>>>>> dev
 
 Basándome en tus respuestas, generaré:
 
 1. ✅ **Estructura de carpetas completa** adaptada a tu stack
+<<<<<<< HEAD
+2. ✅ **Implementación de SOLID** en cada capa
+3. ✅ **Patrones de diseño** apropiados para tu caso
+4. ✅ **Código base** con ejemplos concretos
+5. ✅ **Configuraciones** necesarias
+6. ✅ **Tests** de ejemplo
+7. ✅ **Documentación** de la arquitectura
+=======
    - 🏗️ Validada con: Validador de Arquitectura
    
 2. ✅ **Implementación de SOLID** en cada capa
@@ -1018,6 +1039,7 @@ Basándome en tus respuestas, generaré:
    
 7. ✅ **Documentación** de la arquitectura
    - 🏗️ Basada en: Validador de Arquitectura
+>>>>>>> dev
 
 ---
 
@@ -1094,6 +1116,8 @@ La estructura generada cumplirá con:
 
 ---
 
+<<<<<<< HEAD
+=======
 ## 📚 **APÉNDICE: HERRAMIENTAS ESPECIALIZADAS**
 
 Este prompt integra automáticamente las 6 herramientas especializadas de Claude Code.
@@ -1134,6 +1158,7 @@ Para consultar las especificaciones completas de cada herramienta, revisa:
 
 ---
 
+>>>>>>> dev
 ## 🎯 COMENZAR
 
 **Proporcióname la siguiente información para generar tu proyecto:**
