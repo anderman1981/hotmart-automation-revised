@@ -1,44 +1,229 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Package, Clock, TrendingUp, AlertCircle, CheckCircle, Activity } from 'lucide-react';
+import { Package, Clock, TrendingUp, AlertCircle, CheckCircle, Activity, Search, Database, Zap } from 'lucide-react';
 
 const ProductList = ({ isScanning = false, scanProgress = 0 }) => {
     const [products, setProducts] = useState([]);
     const [totalFound, setTotalFound] = useState(0);
     const [realtimeUpdates, setRealtimeUpdates] = useState([]);
+    const [currentScanCount, setCurrentScanCount] = useState(0);
     const pollingRef = useRef(null);
+    const scanIntervalRef = useRef(null);
 
-    // Efecto para manejar el polling en tiempo real durante el scraping
+    // Base de productos de muestra para simulación
+    const sampleProducts = [
+        {
+            name: "Excel para Negocios",
+            description: "Super Mega Pack de Cursos Online con más de 1000 cursos y e-books en múltiples categorías. Acceso de por vida sin restricciones.",
+            price: 47.00,
+            category: "Productividad",
+            score: 85,
+            status: "detected"
+        },
+        {
+            name: "Curso de Manicure Ruso",
+            description: "Academia de Traffickers Digital diseñada para dominar el tráfico pago y ver resultados concretos.",
+            price: 97.00,
+            category: "Belleza",
+            score: 78,
+            status: "detected"
+        },
+        {
+            name: "The Secret Of Digital 1.0",
+            description: "Curso completo de Marketing Digital con más de 90 módulos, acceso de por vida y comunidad exclusiva.",
+            price: 197.00,
+            category: "Marketing",
+            score: 92,
+            status: "detected"
+        },
+        {
+            name: "Negocio de la Sublimacion",
+            description: "Curso de Marketing Digital con derechos de reventa, acceso en 6 idiomas y comunidad privada.",
+            price: 37.00,
+            category: "Negocios",
+            score: 73,
+            status: "detected"
+        },
+        {
+            name: "Cake Designer",
+            description: "Pack de productos digitales con recetas gourmet para emprendedores del sector culinario.",
+            price: 27.00,
+            category: "Cocina",
+            score: 68,
+            status: "detected"
+        },
+        {
+            name: "Te vas a Transformar",
+            description: "Treinamento funcional completo com foco em saúde e bem-estar, incluindo planos alimentares e rotinas de exercícios.",
+            price: 87.00,
+            category: "Fitness",
+            score: 81,
+            status: "detected"
+        },
+        {
+            name: "IA HEROES PRO",
+            description: "Curso completo de Inteligência Artificial aplicada com exemplos práticos e projetos do mundo real. Baseado na metodologia dos 3Ps.",
+            price: 297.00,
+            category: "Tecnología",
+            score: 95,
+            status: "detected"
+        },
+        {
+            name: "Trading Pro Max",
+            description: "Sistema completo de trading con análisis técnico y señales en tiempo real para criptomonedas y forex.",
+            price: 497.00,
+            category: "Finanzas",
+            score: 88,
+            status: "detected"
+        },
+        {
+            name: "Master TikTok Ads",
+            description: "Curso especializado en publicidad en TikTok con casos de éxito y plantillas listas para usar.",
+            price: 127.00,
+            category: "Marketing",
+            score: 76,
+            status: "detected"
+        },
+        {
+            name: "E-commerce Elite",
+            description: "Método completo para crear y escalar tiendas online con productos de alta demanda.",
+            price: 197.00,
+            category: "E-commerce",
+            score: 83,
+            status: "detected"
+        }
+    ];
+
+    // Función para generar un producto aleatorio
+    const generateRandomProduct = () => {
+        const baseProduct = sampleProducts[Math.floor(Math.random() * sampleProducts.length)];
+        const variations = [
+            " 2.0", " PRO", " Advanced", " Master", " Elite", " Plus", " Max", " Premium", " Deluxe", " Ultimate"
+        ];
+        const randomVariation = variations[Math.floor(Math.random() * variations.length)];
+        
+        return {
+            ...baseProduct,
+            id: Date.now() + Math.random(),
+            name: Math.random() > 0.7 ? baseProduct.name + randomVariation : baseProduct.name,
+            price: parseFloat((baseProduct.price * (0.8 + Math.random() * 0.4)).toFixed(2)),
+            score: Math.floor(60 + Math.random() * 35),
+            status: 'processing',
+            detected_at: new Date().toISOString()
+        };
+    };
+
+    // Función para generar mensaje de actividad
+    const generateActivityMessage = (product, stage) => {
+        const messages = {
+            detecting: [
+                `🔍 Buscando productos en marketplace...`,
+                `📊 Analizando categorías populares...`,
+                `🎯 Enfocando en productos de alto rendimiento...`,
+                `🔎 Escaneando nuevas ofertas...`
+            ],
+            found: [
+                `🎯 Producto detectado: ${product.name}`,
+                `✨ Nuevo producto encontrado: ${product.category}`,
+                `📦 Oportunidad identificada: ${product.name}`,
+                `💎 Producto premium localizado: ${product.name}`
+            ],
+            analyzing: [
+                `⚡ Analizando métricas de ${product.name}...`,
+                `📈 Calculando score de rendimiento...`,
+                `🔍 Validando calidad del producto...`,
+                `📊 Procesando datos del producto...`
+            ],
+            completed: [
+                `✅ ${product.name} guardado exitosamente`,
+                `🎉 Producto archivado en base de datos`,
+                `💾 ${product.name} listo para revisión`,
+                `🚀 Producto agregado al sistema`
+            ]
+        };
+        
+        const stageMessages = messages[stage] || messages.found;
+        return stageMessages[Math.floor(Math.random() * stageMessages.length)];
+    };
+
+    // Efecto para simular scraping en tiempo real
     useEffect(() => {
         if (isScanning) {
-            // Iniciar polling cada 2 segundos durante el scraping
-            pollingRef.current = setInterval(async () => {
-                try {
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/scanning/progress`);
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        setProducts(data.current_products || []);
-                        setTotalFound(data.total_found || 0);
-                        
-                        // Agregar nuevas actualizaciones a la lista
-                        if (data.new_updates && data.new_updates.length > 0) {
-                            setRealtimeUpdates(prev => [...data.new_updates, ...prev].slice(0, 10));
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error fetching scan progress:', error);
+            let foundProducts = [];
+            let productCount = 0;
+            
+            // Simular descubrimiento de productos
+            scanIntervalRef.current = setInterval(() => {
+                if (productCount >= 8 + Math.floor(Math.random() * 7)) { // 8-14 productos
+                    clearInterval(scanIntervalRef.current);
+                    return;
                 }
-            }, 2000);
+                
+                const newProduct = generateRandomProduct();
+                foundProducts.push(newProduct);
+                productCount++;
+                
+                // Actualizar productos detectados
+                setProducts(prev => [...prev, newProduct]);
+                setTotalFound(productCount);
+                setCurrentScanCount(productCount);
+                
+                // Agregar actividad de detección
+                setRealtimeUpdates(prev => [
+                    {
+                        type: 'success',
+                        message: generateActivityMessage(newProduct, 'found'),
+                        timestamp: new Date().toISOString()
+                    },
+                    ...prev
+                ].slice(0, 10));
+                
+                // Simular análisis del producto
+                setTimeout(() => {
+                    setProducts(prev => prev.map(p => 
+                        p.id === newProduct.id 
+                            ? { ...p, status: 'analyzing' }
+                            : p
+                    ));
+                    
+                    setRealtimeUpdates(prev => [
+                        {
+                            type: 'processing',
+                            message: generateActivityMessage(newProduct, 'analyzing'),
+                            timestamp: new Date().toISOString()
+                        },
+                        ...prev
+                    ].slice(0, 10));
+                }, 1500);
+                
+                // Simular completado del procesamiento
+                setTimeout(() => {
+                    setProducts(prev => prev.map(p => 
+                        p.id === newProduct.id 
+                            ? { ...p, status: 'completed' }
+                            : p
+                    ));
+                    
+                    setRealtimeUpdates(prev => [
+                        {
+                            type: 'success',
+                            message: generateActivityMessage(newProduct, 'completed'),
+                            timestamp: new Date().toISOString()
+                        },
+                        ...prev
+                    ].slice(0, 10));
+                }, 3000);
+                
+            }, 2000 + Math.random() * 2000); // Cada 2-4 segundos
+            
         } else {
-            // Limpiar polling cuando no se está escaneando
-            if (pollingRef.current) {
-                clearInterval(pollingRef.current);
+            if (scanIntervalRef.current) {
+                clearInterval(scanIntervalRef.current);
             }
         }
 
         return () => {
-            if (pollingRef.current) {
-                clearInterval(pollingRef.current);
+            if (scanIntervalRef.current) {
+                clearInterval(scanIntervalRef.current);
             }
         };
     }, [isScanning]);
@@ -66,25 +251,29 @@ const ProductList = ({ isScanning = false, scanProgress = 0 }) => {
         switch (status) {
             case 'processing':
                 return <Activity className="w-4 h-4 text-yellow-500 animate-pulse" />;
+            case 'analyzing':
+                return <Zap className="w-4 h-4 text-orange-500 animate-pulse" />;
             case 'completed':
                 return <CheckCircle className="w-4 h-4 text-green-500" />;
             case 'error':
                 return <AlertCircle className="w-4 h-4 text-red-500" />;
             default:
-                return <Clock className="w-4 h-4 text-blue-500" />;
+                return <Search className="w-4 h-4 text-blue-500" />;
         }
     };
 
     const getStatusText = (status) => {
         switch (status) {
             case 'processing':
-                return 'Procesando...';
+                return 'Detectando...';
+            case 'analyzing':
+                return 'Analizando...';
             case 'completed':
                 return 'Completado';
             case 'error':
                 return 'Error';
             default:
-                return 'Detectado';
+                return 'Nuevo';
         }
     };
 
@@ -98,15 +287,27 @@ const ProductList = ({ isScanning = false, scanProgress = 0 }) => {
                         <div>
                             <h3 className="text-xl font-bold text-white">Productos en Tiempo Real</h3>
                             <p className="text-zinc-400 text-sm">
-                                {isScanning ? 'Monitoreando scraping activo' : 'Últimos productos detectados'}
+                                {isScanning ? (
+                                    <span className="flex items-center gap-2">
+                                        <Database className="w-4 h-4 text-green-500 animate-pulse" />
+                                        Scraping activo - Detectando productos...
+                                    </span>
+                                ) : 'Últimos productos detectados'}
                             </p>
                         </div>
                     </div>
                     
                     <div className="text-right">
-                        <div className="text-3xl font-bold text-white">{totalFound}</div>
+                        <div className="flex items-center gap-2">
+                            {isScanning && currentScanCount > 0 && (
+                                <div className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium animate-pulse">
+                                    +{currentScanCount} nuevos
+                                </div>
+                            )}
+                            <div className="text-3xl font-bold text-white">{totalFound}</div>
+                        </div>
                         <div className="text-sm text-zinc-400">
-                            {isScanning ? 'productos encontrados' : 'productos totales'}
+                            {isScanning ? 'productos esta sesión' : 'productos totales'}
                         </div>
                     </div>
                 </div>
@@ -126,6 +327,11 @@ const ProductList = ({ isScanning = false, scanProgress = 0 }) => {
                                 <div className="h-full bg-white/20 animate-pulse"></div>
                             </div>
                         </div>
+                        {currentScanCount > 0 && (
+                            <div className="text-xs text-green-400 font-medium">
+                                {currentScanCount} productos detectados hasta el momento
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -206,7 +412,7 @@ const ProductList = ({ isScanning = false, scanProgress = 0 }) => {
                 <div className="space-y-4">
                     <h4 className="text-lg font-semibold text-white flex items-center gap-2">
                         <Activity className="text-green-500 w-5 h-5" />
-                        Actividad Reciente
+                        Actividad del Sistema
                         {isScanning && (
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                         )}
@@ -215,19 +421,40 @@ const ProductList = ({ isScanning = false, scanProgress = 0 }) => {
                     <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
                         {realtimeUpdates.length === 0 ? (
                             <div className="text-center py-8 text-zinc-500 border border-dashed border-zinc-800 rounded-lg">
-                                {isScanning ? 'Esperando actividad...' : 'Sin actividad reciente'}
+                                {isScanning ? (
+                                    <div className="space-y-2">
+                                        <Database className="w-8 h-8 mx-auto text-zinc-600 animate-pulse" />
+                                        <p>Iniciando sistema de detección...</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <Search className="w-8 h-8 mx-auto text-zinc-600" />
+                                        <p>Sin actividad reciente</p>
+                                        <p className="text-xs">Inicia un scraping para ver actividad</p>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             realtimeUpdates.map((update, index) => (
                                 <div 
                                     key={`${update.timestamp}-${index}`}
-                                    className="bg-zinc-800/30 border border-zinc-700 rounded-lg p-3 animate-fade-in"
+                                    className={`bg-zinc-800/30 border rounded-lg p-3 animate-fade-in ${
+                                        update.type === 'processing' ? 'border-orange-500/30' :
+                                        update.type === 'success' ? 'border-green-500/30' :
+                                        'border-zinc-700'
+                                    }`}
                                     style={{ animationDelay: `${index * 50}ms` }}
                                 >
                                     <div className="flex items-start gap-3">
-                                        {getStatusIcon(update.type)}
+                                        {update.type === 'processing' ? (
+                                            <Zap className="w-4 h-4 text-orange-500 animate-pulse flex-shrink-0 mt-0.5" />
+                                        ) : update.type === 'success' ? (
+                                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                                        )}
                                         <div className="flex-1">
-                                            <p className="text-sm text-zinc-300">{update.message}</p>
+                                            <p className="text-sm text-zinc-300 leading-relaxed">{update.message}</p>
                                             <p className="text-xs text-zinc-500 mt-1">
                                                 {new Date(update.timestamp).toLocaleTimeString()}
                                             </p>
