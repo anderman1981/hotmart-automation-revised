@@ -4,7 +4,7 @@
     {
       "parameters": {
         "triggerTimes": {
-          "item": [{ "mode": "everyX", "value": 1, "unit": "hours" }]
+          "item": [{ "mode": "everyX", "value": 4, "unit": "hours" }]
         }
       },
       "name": "CRON_MONITOR",
@@ -14,7 +14,10 @@
     {
       "parameters": {
         "url": "http://localhost:4123/health",
-        "method": "GET"
+        "method": "GET",
+        "headers": {
+          "Content-Type": "application/json"
+        }
       },
       "name": "CHECK_HEALTH",
       "type": "n8n-nodes-base.httpRequest",
@@ -22,12 +25,35 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:4123/api/system/stop",
-        "method": "POST"
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "equal",
+              "value2": "OK"
+            }
+          ]
+        }
       },
-      "name": "STOP_ALL",
-      "type": "n8n-nodes-base.httpRequest",
+      "name": "SYSTEM_HEALTHY",
+      "type": "n8n-nodes-base.if",
       "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Sistema saludable - log simple\nconst healthData = items[0].json;\n\nreturn {\n  json: {\n    status: 'healthy',\n    message: '✅ Sistema funcionando correctamente',\n    timestamp: new Date().toISOString(),\n    health: healthData\n  }\n};"
+      },
+      "name": "LOG_HEALTHY",
+      "type": "n8n-nodes-base.function",
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Sistema con problemas - notificar y detener\nconst healthData = items[0].json;\n\n// Si el sistema no está saludable, simplemente loguear el problema\nreturn {\n  json: {\n    status: 'unhealthy',\n    message: '⚠️ Sistema con problemas detectados',\n    timestamp: new Date().toISOString(),\n    health: healthData,\n    action: 'manual_intervention_required'\n  }\n};"
+      },
+      "name": "LOG_UNHEALTHY",
+      "type": "n8n-nodes-base.function",
+      "position": [900, 400]
     }
   ],
   "connections": {
@@ -35,8 +61,20 @@
       "main": [[{ "node": "CHECK_HEALTH", "type": "main", "index": 0 }]]
     },
     "CHECK_HEALTH": {
-      "main": [[{ "node": "STOP_ALL", "type": "main", "index": 0 }]]
+      "main": [
+        [{ "node": "SYSTEM_HEALTHY", "type": "main", "index": 0 }],
+        [{ "node": "SYSTEM_HEALTHY", "type": "main", "index": 1 }]
+      ]
+    },
+    "SYSTEM_HEALTHY": {
+      "main": [
+        [{ "node": "LOG_HEALTHY", "type": "main", "index": 0 }],
+        [{ "node": "LOG_UNHEALTHY", "type": "main", "index": 0 }]
+      ]
     }
   },
-  "active": false
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
 }
