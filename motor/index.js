@@ -3,8 +3,25 @@ import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
 const { Pool } = pg;
-import { createClient } from 'redis';
-import redis from 'redis';
+// Redis connection (optional for basic functionality)
+let redisClient = null;
+
+try {
+  const { createClient } = await import('redis');
+  redisClient = createClient({
+    url: `redis://${process.env.REDIS_HOST || 'localhost'}:6379`
+  });
+
+  redisClient.on('error', (err) => console.log('Redis Client Error', err));
+  
+  await redisClient.connect();
+  console.log('✅ Connected to Redis');
+} catch (e) {
+  console.log('⚠️ Redis not available, running without cache');
+  redisClient = {
+    isOpen: false
+  };
+}
 import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
@@ -34,20 +51,8 @@ const pool = new Pool({
   port: 5432,
 });
 
-// Redis Connection
-const redisClient = createClient({
-  url: `redis://${process.env.REDIS_HOST}:6379`
-});
-
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
-
-(async () => {
-  await redisClient.connect();
-  console.log('✅ Connected to Redis');
-})();
-
-// Global System State
-let SYSTEM_ACTIVE = true;
+        // Global System State
+        let SYSTEM_ACTIVE = true;
 
 // Routes
 app.get('/', (req, res) => {
@@ -322,16 +327,10 @@ app.post('/api/admin/products/populate', async (req, res) => {
         ];
         
         for (const product of highEarningProducts) {
-            const productId = crypto.randomUUID();
             await pool.query(
-                `INSERT INTO products (id, hotmart_id, name, description, niche, url_sales_page, status) 
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [productId, product.hotmart_id, product.name, product.description, product.niche, product.url_sales_page, 'active']
-            );
-            
-            await pool.query(
-                `INSERT INTO product_scores (product_id) VALUES ($1)`,
-                [productId]
+                `INSERT INTO products (hotmart_id, name, description, niche, url_sales_page, status, affiliate_commission) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [product.hotmart_id, product.name, product.description, product.niche, product.url_sales_page, product.status || 'testing', 40.0]
             );
         }
         
@@ -342,29 +341,131 @@ app.post('/api/admin/products/populate', async (req, res) => {
     }
 });
 
-// Dashboard Stats
+// --- Dashboard Stats API ---
 app.get('/api/stats', async (req, res) => {
     try {
+        // Products metrics
         const productsCount = await pool.query('SELECT COUNT(*) FROM products');
-        const recentSales = await pool.query('SELECT SUM(sales_count) FROM daily_metrics'); // Mock aggregate
+        const selectedProducts = await pool.query('SELECT COUNT(*) FROM products WHERE selected_for_tracking = TRUE');
+        const totalRevenue = await pool.query('SELECT SUM(total_revenue) FROM products WHERE total_revenue IS NOT NULL');
+        const totalCommissions = await pool.query('SELECT SUM(total_commissions) FROM products WHERE total_commissions IS NOT NULL');
         
-        // Count active agents dynamically
-        const activeAgents = [
-            detectorAgent.browser, 
-            instagramAgent.browser, 
-            learningAgent.browser,
-            true, // Content (Service)
-            true, // Git (Service)
-            true  // Manager (Service)
-        ].filter(Boolean).length;
+        // Generated content metrics
+        const contentGenerated = await pool.query('SELECT COUNT(*) FROM generated_content');
+        const contentThisWeek = await pool.query(`
+            SELECT COUNT(*) FROM generated_content 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+        `);
+        const contentLastWeek = await pool.query(`
+            SELECT COUNT(*) FROM generated_content 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '14 days' 
+            AND created_at < CURRENT_DATE - INTERVAL '7 days'
+        `);
+        
+        // Agent status
+        const agentStatus = await pool.query('SELECT status, COUNT(*) FROM agent_status GROUP BY status');
+        const activeAgents = agentStatus.rows.find(row => row.status === 'active')?.count || 0;
+        
+        // New products since last scan (last 24 hours)
+        const newProducts = await pool.query(`
+            SELECT COUNT(*) FROM products 
+            WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+        `);
+        
+        // Calculate content trend
+        const contentThisWeekCount = parseInt(contentThisWeek.rows[0].count);
+        const contentLastWeekCount = parseInt(contentLastWeek.rows[0].count);
+        const contentTrend = contentLastWeekCount > 0 ? 
+            Math.round(((contentThisWeekCount - contentLastWeekCount) / contentLastWeekCount) * 100) : 0;
 
         res.json({
-            products: parseInt(productsCount.rows[0].count),
-            sales: parseInt(recentSales.rows[0].sum || 0) * 25, // Mock revenue calc ($25 avg commission)
-            content_generated: 843, // Placeholder until DB table exists
+            // Estimated Earnings
+            estimated_earnings: parseFloat(totalRevenue.rows[0].sum || 0),
+            selected_products: parseInt(selectedProducts.rows[0].count),
+            actual_revenue: parseFloat(totalRevenue.rows[0].sum || 0),
+            
+            // Tracked Products  
+            tracked_products: parseInt(productsCount.rows[0].count),
+            new_products: parseInt(newProducts.rows[0].count),
+            
+            // Generated Content
+            content_generated: parseInt(contentGenerated.rows[0].count),
+            content_trend: contentTrend,
+            content_this_week: contentThisWeekCount,
+            
+            // Active Agents
             active_agents: activeAgents,
+            total_agents: 7,
+            
+            // System status
             system_active: SYSTEM_ACTIVE
         });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Agent Status API ---
+app.get('/api/agents/status', async (req, res) => {
+    try {
+        const agents = await pool.query(`
+            SELECT agent_name, status, last_activity, current_task, performance_metrics 
+            FROM agent_status 
+            ORDER BY agent_name
+        `);
+        res.json(agents.rows);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Content Generation API ---
+app.post('/api/content', async (req, res) => {
+    const { content_type, title, content, platform, agent_name, product_id } = req.body;
+    try {
+        const result = await pool.query(`
+            INSERT INTO generated_content (content_type, title, content, platform, agent_name, product_id, status)
+            VALUES ($1, $2, $3, $4, $5, $6, 'draft')
+            RETURNING id, created_at
+        `, [content_type, title, content, platform, agent_name, product_id]);
+        
+        // Update agent activity
+        await pool.query('SELECT update_agent_activity($1, $2, $3)', 
+            [agent_name, 'active', `Generated ${content_type}: ${title}`]);
+            
+        res.json({ success: true, content: result.rows[0] });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Product Selection API ---
+app.put('/api/products/:id/select', async (req, res) => {
+    const { id } = req.params;
+    const { selected } = req.body;
+    try {
+        await pool.query(
+            'UPDATE products SET selected_for_tracking = $1 WHERE id = $2',
+            [selected, id]
+        );
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Revenue Update API ---
+app.post('/api/products/:id/revenue', async (req, res) => {
+    const { id } = req.params;
+    const { revenue, commissions } = req.body;
+    try {
+        await pool.query(`
+            UPDATE products 
+            SET total_revenue = COALESCE(total_revenue, 0) + $1,
+                total_commissions = COALESCE(total_commissions, 0) + $2
+            WHERE id = $3
+        `, [revenue, commissions, id]);
+        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -409,14 +510,15 @@ app.post('/api/metrics', async (req, res) => {
   }
 });
 
-import detectorAgent from './src/agents/DetectorAgent.js';
-import instagramAgent from './src/agents/InstagramAgent.js';
-import contentAgent from './src/agents/ContentAgent.js';
-import assetsAgent from './src/agents/AssetsAgent.js';
-import gitAgent from './src/agents/GitAgent.js';
-import learningAgent from './src/agents/LearningAgent.js';
-import managerAgent from './src/agents/ManagerAgent.js';
-import affiliateAgent from './src/agents/AffiliateAgent.js';
+// Import agents
+const { default: detectorAgent } = await import('./src/agents/DetectorAgent.js');
+const { default: instagramAgent } = await import('./src/agents/InstagramAgent.js');
+const { default: contentAgent } = await import('./src/agents/ContentAgent.js');
+const { default: assetsAgent } = await import('./src/agents/AssetsAgent.js');
+const { default: gitAgent } = await import('./src/agents/GitAgent.js');
+const { default: learningAgent } = await import('./src/agents/LearningAgent.js');
+const { default: managerAgent } = await import('./src/agents/ManagerAgent.js');
+const { default: affiliateAgent } = await import('./src/agents/AffiliateAgent.js');
 
 // Init Agents
 (async () => {
@@ -1023,19 +1125,190 @@ app.get('/api/affiliate/metrics', async (req, res) => {
 // ...
 
 // Trigger Detector Agent
-app.post('/api/agents/detector/start', async (req, res) => {
-  try {
-    // Run in background (dont await the full scan for the response)
-    detectorAgent.scanMarket().then(result => {
-      console.log('Scan complete:', result);
-    }).catch(err => {
-      console.error('Scan error:', err);
-    });
+// --- Bulk Product Operations ---
+app.post('/api/products/bulk', async (req, res) => {
+    const { products } = req.body;
+    
+    if (!Array.isArray(products) || products.length === 0) {
+        return res.status(400).json({ error: 'Products array is required' });
+    }
+    
+    try {
+        let insertedCount = 0;
+        let updatedCount = 0;
+        
+        for (const product of products) {
+            // Check if product already exists
+            const existsResult = await pool.query(
+                'SELECT id FROM products WHERE hotmart_id = $1',
+                [product.hotmart_id]
+            );
+            
+            if (existsResult.rows.length === 0) {
+                // Insert new product
+                await pool.query(`
+                    INSERT INTO products (hotmart_id, name, niche, url_sales_page, status, price, commission_rate, selected_for_tracking)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `, [
+                    product.hotmart_id,
+                    product.name,
+                    product.niche,
+                    product.url_sales_page || `https://hotmart.com/${product.hotmart_id}`,
+                    product.status || 'tracking',
+                    product.price || 0,
+                    product.commission_rate || 40,
+                    product.selected_for_tracking || false
+                ]);
+                insertedCount++;
+            } else {
+                // Update existing product
+                await pool.query(`
+                    UPDATE products SET 
+                        name = COALESCE($1, name),
+                        niche = COALESCE($2, niche),
+                        price = COALESCE($3, price),
+                        commission_rate = COALESCE($4, commission_rate),
+                        selected_for_tracking = COALESCE($5, selected_for_tracking),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE hotmart_id = $6
+                `, [
+                    product.name,
+                    product.niche,
+                    product.price,
+                    product.commission_rate,
+                    product.selected_for_tracking,
+                    product.hotmart_id
+                ]);
+                updatedCount++;
+            }
+        }
+        
+        res.json({
+            status: 'success',
+            message: `Bulk operation completed. ${insertedCount} new products inserted, ${updatedCount} products updated.`,
+            inserted: insertedCount,
+            updated: updatedCount,
+            total_processed: products.length
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
-    res.json({ status: 'Detector Agent Started', msg: 'The agent is browsing Hotmart in the background...' });
+// --- Enhanced Detector Agent Start ---
+app.post('/api/agents/detector/start', async (req, res) => {
+    const { deep = false } = req.body;
+    
+    try {
+        console.log(`🚀 Starting Detector Agent (deep scan: ${deep})`);
+        
+        // Update agent status in database
+        await pool.query(
+            'SELECT update_agent_activity($1, $2, $3)',
+            ['Detector', 'active', 'Market scanning for products...']
+        );
+        
+        // Run in background with proper status updates
+        detectorAgent.scanMarket().then(async (result) => {
+            console.log('✅ Scan complete:', result);
+            
+            if (result.status === 'success') {
+                // Update agent status to completed
+                await pool.query(
+                    'SELECT update_agent_activity($1, $2, $3)',
+                    ['Detector', 'inactive', `Scan completed: ${result.new_products} new products`]
+                );
+                
+                // Refresh dashboard stats (broadcast to all connected clients if needed)
+                console.log('📊 Dashboard stats updated with new products');
+            } else {
+                // Update agent status to error
+                await pool.query(
+                    'SELECT update_agent_activity($1, $2, $3)',
+                    ['Detector', 'error', `Scan failed: ${result.message}`]
+                );
+            }
+        }).catch(async (err) => {
+            console.error('❌ Scan error:', err);
+            
+            // Update agent status to error
+            await pool.query(
+                'SELECT update_agent_activity($1, $2, $3)',
+                ['Detector', 'error', `Scan error: ${err.message}`]
+            );
+        });
+
+        res.json({ 
+            status: 'Detector Agent Started', 
+            msg: `The agent is browsing Hotmart in the background... (Deep scan: ${deep})` 
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- Get Products with Metrics ---
+app.get('/api/products/metrics', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                p.id,
+                p.hotmart_id,
+                p.name,
+                p.niche,
+                p.price,
+                p.commission_rate,
+                p.selected_for_tracking,
+                p.total_revenue,
+                p.total_commissions,
+                p.status,
+                p.created_at,
+                COALESCE(dm.sales_count, 0) as sales_count,
+                COALESCE(dm.click_out_count, 0) as click_count,
+                COALESCE(dm.social_views, 0) as social_views,
+                COALESCE(dm.refund_count, 0) as refund_count
+            FROM products p
+            LEFT JOIN (
+                SELECT 
+                    product_id,
+                    SUM(sales_count) as sales_count,
+                    SUM(click_out_count) as click_out_count,
+                    SUM(social_views) as social_views,
+                    SUM(refund_count) as refund_count
+                FROM daily_metrics 
+                GROUP BY product_id
+            ) dm ON p.id = dm.product_id
+            ORDER BY p.created_at DESC
+            LIMIT 50
+        `);
+        
+        res.json({
+            status: 'success',
+            products: result.rows,
+            total: result.rows.length
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+    
+app.get('/health', async (req, res) => {
+// ...
+  try {
+    const dbRes = await pool.query('SELECT NOW()');
+    res.json({ 
+      status: 'OK', 
+      db: 'Connected', 
+      timestamp: dbRes.rows[0].now,
+      redis: redisClient && redisClient.isOpen ? 'Connected' : 'Disconnected' 
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ status: 'Error', error: error.message });
   }
+});
 });
 
 app.get('/health', async (req, res) => {
@@ -1046,7 +1319,7 @@ app.get('/health', async (req, res) => {
       status: 'OK', 
       db: 'Connected', 
       timestamp: dbRes.rows[0].now,
-      redis: redisClient.isOpen ? 'Connected' : 'Disconnected' 
+      redis: redisClient && redisClient.isOpen ? 'Connected' : 'Disconnected' 
     });
   } catch (error) {
     res.status(500).json({ status: 'Error', error: error.message });

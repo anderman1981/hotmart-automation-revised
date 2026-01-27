@@ -1,0 +1,79 @@
+{
+  "name": "HOTMART_SUPER_EFFICIENT",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 4,
+              "unit": "hours"
+            }
+          ]
+        }
+      },
+      "name": "MAIN_CRON",
+      "type": "n8n-nodes-base.cron",
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Super eficiente: Todas las tareas en un solo nodo\nconst baseUrl = 'http://localhost:4123';\n\n// Ejecutar todas las llamadas en paralelo\nconst requests = [\n  fetch(`${baseUrl}/api/agents/manager/task`, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ mode: 'AUTO_EXECUTION' })\n  }),\n  fetch(`${baseUrl}/api/agents/instagram/start`, {\n    method: 'POST', \n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ source: 'cron' })\n  }),\n  fetch(`${baseUrl}/api/metrics`, {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({ auto: true })\n  }),\n  fetch(`${baseUrl}/api/stats`)\n];\n\nconst results = await Promise.all(requests);\nconst responses = await Promise.all(results.map(r => r.json()));\n\nreturn {\n  json: {\n    timestamp: new Date().toISOString(),\n    manager: responses[0],\n    instagram: responses[1], \n    metrics: responses[2],\n    stats: responses[3],\n    success: true\n  }\n};"
+      },
+      "name": "ALL_IN_ONE",
+      "type": "n8n-nodes-base.function",
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.manager.status}}",
+              "operation": "equal",
+              "value2": "manager_ack"
+            }
+          ]
+        }
+      },
+      "name": "CHECK_SUCCESS",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Solo ejecutar si todo fue exitoso\nconst data = items[0].json;\n\nif (data.success && data.stats.system_active) {\n  return {\n    json: {\n      message: '✅ Hotmart automation completed successfully',\n      timestamp: data.timestamp,\n      active_agents: data.stats.total_agents,\n      tracked_products: data.stats.tracked_products\n    }\n  };\n} else {\n  return {\n    json: {\n      message: '⚠️ Partial execution',\n      data: data\n    }\n  };\n}"
+      },
+      "name": "SUCCESS_LOG",
+      "type": "n8n-nodes-base.function",
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Manejo de errores\nconst data = items[0].json;\n\nreturn {\n  json: {\n    message: '❌ Error in automation',\n    timestamp: new Date().toISOString(),\n    data: data,\n    suggestions: [\n      'Check if hotmart motor is running on localhost:4123',\n      'Verify database connection',\n      'Check agent availability'\n    ]\n  }\n};"
+      },
+      "name": "ERROR_HANDLER", 
+      "type": "n8n-nodes-base.function",
+      "position": [900, 400]
+    }
+  ],
+  "connections": {
+    "MAIN_CRON": {
+      "main": [[{ "node": "ALL_IN_ONE", "type": "main", "index": 0 }]]
+    },
+    "ALL_IN_ONE": {
+      "main": [[{ "node": "CHECK_SUCCESS", "type": "main", "index": 0 }]]
+    },
+    "CHECK_SUCCESS": {
+      "main": [
+        [{ "node": "SUCCESS_LOG", "type": "main", "index": 0 }],
+        [{ "node": "ERROR_HANDLER", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

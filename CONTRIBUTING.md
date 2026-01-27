@@ -1,6 +1,6 @@
 # 🤝 Cómo Contribuir
 
-¡Gracias por tu interés en contribuir a **Hotmart Automation System**!
+¡Gracias por tu interés en contribuir a **HotAmart Automation System**!
 
 Para mantener la calidad y el orden del proyecto, sigue estrictamente nuestras reglas de flujo de trabajo documentadas en:
 

@@ -45,9 +45,16 @@ Realizar un análisis exhaustivo y crítico del proyecto proporcionado, identifi
 
 ## METODOLOGÍA DE EVALUACIÓN
 
+<<<<<<< HEAD
 Analiza el proyecto siguiendo esta estructura detallada:
 
 ### 📋 **1. ANÁLISIS DE CÓDIGO Y ARQUITECTURA**
+=======
+Analiza el proyecto siguiendo esta estructura detallada, **utilizando las 6 herramientas especializadas integradas** según corresponda:
+
+### 📋 **1. ANÁLISIS DE CÓDIGO Y ARQUITECTURA**
+**🏗️ Utiliza: Validador de Arquitectura + Refactor de Código Legacy**
+>>>>>>> dev
 
 #### A. Estructura del Proyecto
 - [ ] Organización de carpetas y archivos
@@ -72,6 +79,10 @@ Analiza el proyecto siguiendo esta estructura detallada:
 - [ ] APIs y contratos de servicio
 
 #### D. Seguridad
+<<<<<<< HEAD
+=======
+**🔒 Utiliza: Auditor de Seguridad**
+>>>>>>> dev
 - [ ] Vulnerabilidades conocidas (OWASP Top 10)
 - [ ] Autenticación y autorización
 - [ ] Validación de inputs
@@ -82,6 +93,10 @@ Analiza el proyecto siguiendo esta estructura detallada:
 ---
 
 ### 🧪 **2. ANÁLISIS DE TESTING Y QA**
+<<<<<<< HEAD
+=======
+**🧪 Utiliza: Generador de Tests**
+>>>>>>> dev
 
 #### A. Cobertura de Pruebas
 - [ ] Porcentaje de cobertura de código
@@ -144,6 +159,10 @@ Analiza el proyecto siguiendo esta estructura detallada:
 ---
 
 ### 🗄️ **4. ANÁLISIS DE BASE DE DATOS**
+<<<<<<< HEAD
+=======
+**🗄️ Utiliza: Optimizador de Base de Datos**
+>>>>>>> dev
 
 #### A. Modelado de Datos
 - [ ] Normalización apropiada (1NF, 2NF, 3NF, BCNF)
@@ -284,9 +303,63 @@ Links a documentación, herramientas o frameworks recomendados
 
 ---
 
+<<<<<<< HEAD
 ## 🚀 **AUTOMATIZACIÓN Y ENTREGABLES EN GITHUB**
 
 Después de completar el análisis, **generaré automáticamente y subiré a GitHub**:
+=======
+## 🔧 **HERRAMIENTAS ESPECIALIZADAS INTEGRADAS**
+
+Para realizar el análisis más exhaustivo, integro 6 herramientas especializadas de Claude Code:
+
+### 1️⃣ **Validador de Arquitectura** 🏗️
+Analiza escalabilidad, riesgos técnicos y puntos débiles antes de programar.
+- Identifica single points of failure
+- Evalúa estrategias de escalabilidad
+- Detecta violaciones de principios arquitectónicos
+- Genera roadmap de mejoras priorizadas
+
+### 2️⃣ **Diseñador de APIs** 🔌
+Diseña APIs REST coherentes, pensadas para frontend, errores y crecimiento.
+- Estructura RESTful apropiada
+- OpenAPI/Swagger specifications
+- Validaciones y manejo de errores
+- Versionamiento y documentación completa
+
+### 3️⃣ **Refactor de Código Legacy** ♻️
+Limpia y mejora código existente sin cambiar su comportamiento.
+- Detección de code smells
+- Aplicación de principios SOLID
+- Eliminación de antipatrones
+- Tests que validan el comportamiento
+
+### 4️⃣ **Optimizador de Base de Datos** 🗄️
+Detecta consultas lentas, índices mal definidos y cuellos de botella.
+- Análisis de queries N+1
+- Optimización de índices
+- Estrategias de caching
+- Scripts SQL de optimización
+
+### 5️⃣ **Auditor de Seguridad** 🔒
+Encuentra vulnerabilidades reales y propone soluciones concretas.
+- OWASP Top 10 completo
+- Análisis de exposición de datos sensibles
+- Código de fixes específicos
+- Plan de remediación priorizado
+
+### 6️⃣ **Generador de Tests** 🧪
+Crea tests unitarios e integración listos para CI/CD.
+- Unit tests (70%)
+- Integration tests (20%)
+- E2E tests (10%)
+- Coverage >= 80%
+
+---
+
+## 🚀 **AUTOMATIZACIÓN Y ENTREGABLES EN GITHUB**
+
+Después de completar el análisis usando las herramientas especializadas, **generaré automáticamente y subiré a GitHub**:
+>>>>>>> dev
 
 ### 📁 **1. DOCUMENTACIÓN COMPLETA**
 
@@ -616,6 +689,25 @@ proyecto/
 
 ---
 
+<<<<<<< HEAD
+=======
+---
+
+## 📚 **APÉNDICE: PROMPTS ESPECIALIZADOS DETALLADOS**
+
+Para consultar las especificaciones completas de cada herramienta especializada, revisa el documento:
+**`6_prompts_claude_code.md`**
+
+Este documento contiene:
+- ✅ Prompt completo de cada herramienta
+- ✅ Ejemplos de código específicos
+- ✅ Casos de uso detallados
+- ✅ Entregables esperados
+- ✅ Mejores prácticas por herramienta
+
+---
+
+>>>>>>> dev
 ## 🎬 **PROCESO DE ENTREGA**
 
 ### Paso 1: Análisis Completo
