@@ -259,10 +259,9 @@ const Dashboard = () => {
                     <StatsCard
                         title="Estimated Earnings"
                         value={`$${stats.estimated_earnings.toLocaleString()}`}
-                        change={12.5}
-                        icon={<DollarSign className="h-5 w-5" />}
+                        trend={12.5}
+                        icon={DollarSign}
                         color="emerald"
-                        trend="up"
                     />
                 </motion.div>
 
@@ -274,10 +273,9 @@ const Dashboard = () => {
                     <StatsCard
                         title="Tracked Products"
                         value={stats.tracked_products}
-                        change={8.2}
-                        icon={<Package className="h-5 w-5" />}
+                        trend={8.2}
+                        icon={Package}
                         color="blue"
-                        trend="up"
                     />
                 </motion.div>
 
@@ -289,10 +287,9 @@ const Dashboard = () => {
                     <StatsCard
                         title="Content Generated"
                         value={stats.content_generated}
-                        change={15.3}
-                        icon={<FileText className="h-5 w-5" />}
+                        trend={15.3}
+                        icon={FileText}
                         color="purple"
-                        trend="up"
                     />
                 </motion.div>
 
@@ -304,10 +301,9 @@ const Dashboard = () => {
                     <StatsCard
                         title="Active Agents"
                         value={`${activeAgentsCount}/${stats.total_agents}`}
-                        change={0}
-                        icon={<Users className="h-5 w-5" />}
+                        trend={0}
+                        icon={Users}
                         color="orange"
-                        trend="stable"
                     />
                 </motion.div>
             </div>
