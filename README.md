@@ -1,8 +1,34 @@
-# 🚀 Hotmart Automation System
+# 🔥 Hotmart Automation System v1.1.0
 
-**Versión:** 1.2.0 (Stable)  
-**Última Actualización:** 2026-01-21  
-**Estado:** ✅ Producción
+> **System Status:** ✅ ACTIVE  
+> **Main Branch:** `main`  
+> **Development:** `dev` (sincronizado)  
+> **Last Updated:** 2026-01-28
+
+## 🎯 Current Version: v1.1.0 - "System Active"
+
+### 🚀 What's New in v1.1.0
+
+#### ✨ **Dashboard Enhancements**
+- **Global Scan Modal**: Configurable product count selector (1-100)
+- **Real-time Progress**: Visual feedback during scanning operations
+- **Product Summary**: Compact view with key statistics
+- **Navigation Hub**: Direct access to Products section
+
+#### 📦 **Products System Redesign**
+- **Minimalist Cards**: Clean, modern product visualization
+- **Detail Modal**: Comprehensive product information display:
+  - Product images and media
+  - Performance metrics and analytics
+  - Sales and commission data
+  - Affiliate status tracking
+  - Direct Hotmart integration links
+
+#### 🔄 **Real-time Integration**
+- **Cross-page Communication**: Dashboard ↔ Products synchronization
+- **Event-driven Updates**: Automatic refresh on scan completion
+- **Manual Refresh**: User-triggered data synchronization
+- **Toast Notifications**: Visual feedback for all operations
 
 ---
 
