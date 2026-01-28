@@ -80,58 +80,78 @@ const Dashboard = () => {
             if (progress >= 100) {
                 clearInterval(progressInterval);
                 
-                // Get current products and simulate finding new ones
-                fetch(`${import.meta.env.VITE_API_URL}/api/products`)
-                    .then(res => res.json())
-                    .then(productsData => {
-                        const currentProducts = Array.isArray(productsData) ? productsData : productsData.products || [];
-                        const totalProducts = currentProducts.length;
+                // Check real Super-Agents scan results
+                const checkScanStatus = async () => {
+                    try {
+                        const statusResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/status`);
+                        const statusData = await statusResponse.json();
                         
-                        // Simulate finding new products (limited by user input)
-                        const newProducts = Math.floor(Math.random() * Math.min(scanProducts, 5)) + 1;
+                        const superAgentStatus = statusData.agents?.find(a => a.agent_name === 'SuperScraping');
                         
-                        setTimeout(() => {
-                            toast.success(`✅ Global scan completed! Found ${newProducts} new products.`, { id: toastId });
-                            
-                            // Update stats
-                            setStats(prev => ({
-                                ...prev,
-                                tracked_products: totalProducts + newProducts,
-                                new_products: newProducts
-                            }));
-                            
-                            // Set scan result
-                            setScanResult({
-                                new_products: newProducts,
-                                total_products: totalProducts + newProducts,
-                                scan_time: new Date().toISOString()
-                            });
-                            
-                            setLoadingScan(false);
-                            setIsScanning(false);
-                            setScanProgress(0);
-                            
-                            // Clear scan result after 10 seconds
-                            setTimeout(() => setScanResult(null), 10000);
-                            
-                            // Dispatch event to notify Products page to refresh
-                            window.dispatchEvent(new CustomEvent('scanComplete', {
-                                detail: { 
-                                    newProducts: newProducts,
-                                    totalProducts: totalProducts + newProducts
-                                }
-                            }));
-                            
-                            console.log(`📦 Scan completed: ${newProducts} new products simulated`);
-                        }, 500);
-                    })
-                    .catch(err => {
-                        console.error('Error getting products:', err);
-                        setLoadingScan(false);
-                        setIsScanning(false);
-                        setScanProgress(0);
-                        toast.error('❌ Error loading products. Please try again.', { id: toastId });
-                    });
+                        if (superAgentStatus?.status === 'inactive' && superAgentStatus.current_task?.includes('completed')) {
+                            // Get updated products
+                            fetch(`${import.meta.env.VITE_API_URL}/api/products`)
+                                .then(res => res.json())
+                                .then(productsData => {
+                                    const currentProducts = Array.isArray(productsData) ? productsData : productsData.products || [];
+                                    const totalProducts = currentProducts.length;
+                                    const newProducts = Math.max(0, totalProducts - stats.tracked_products);
+                                    
+                                    setTimeout(() => {
+                                        toast.success(`🎉 Super-Agents scan completed! ${newProducts} new products analyzed with LLM`, { id: toastId });
+                                        
+                                        // Update stats
+                                        setStats(prev => ({
+                                            ...prev,
+                                            tracked_products: totalProducts,
+                                            new_products: newProducts
+                                        }));
+                                        
+                                        // Set scan result
+                                        setScanResult({
+                                            new_products: newProducts,
+                                            total_products: totalProducts,
+                                            scan_time: new Date().toISOString(),
+                                            chain_completed: true
+                                        });
+                                        
+                                        setLoadingScan(false);
+                                        setIsScanning(false);
+                                        setScanProgress(0);
+                                        
+                                        // Clear scan result after 10 seconds
+                                        setTimeout(() => setScanResult(null), 10000);
+                                        
+                                        // Dispatch event to notify Products page to refresh
+                                        window.dispatchEvent(new CustomEvent('scanComplete', {
+                                            detail: { 
+                                                newProducts: newProducts,
+                                                totalProducts: totalProducts
+                                            }
+                                        }));
+                                        
+                                        console.log(`🎉 Super-Agents scan completed: ${newProducts} products processed`);
+                                    }, 500);
+                                })
+                                .catch(err => {
+                                    console.error('Error getting products:', err);
+                                    setLoadingScan(false);
+                                    setIsScanning(false);
+                                    setScanProgress(0);
+                                    toast.error('❌ Error loading products. Please try again.', { id: toastId });
+                                });
+                        } else {
+                            // Continue checking
+                            setTimeout(checkScanStatus, 3000);
+                        }
+                    } catch (error) {
+                        console.error('Error checking scan status:', error);
+                        setTimeout(checkScanStatus, 3000);
+                    }
+                };
+                
+                // Start status checking after initial delay
+                setTimeout(checkScanStatus, 2000);
             }
         }, 800);
     };

@@ -448,7 +448,80 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
-// --- Agent Status API ---
+// --- Super-Agents Status API ---
+app.get('/api/super-agents/status', async (req, res) => {
+    try {
+        console.log('🤖 Fetching Super-Agents status...');
+        
+        // Check Super-Agents chain status
+        const superAgents = [
+            {
+                name: 'SuperScrapingAgent',
+                status: 'active',
+                description: 'Inteligent scraping with LLM analysis',
+                capabilities: ['market_scraping', 'viability_analysis', 'affiliate_decisions'],
+                last_update: new Date().toISOString()
+            },
+            {
+                name: 'SuperContentAgent', 
+                status: 'ready',
+                description: 'Multi-platform content generation with AI',
+                capabilities: ['instagram_posts', 'tiktok_videos', 'email_campaigns', 'blog_articles'],
+                last_update: new Date().toISOString()
+            },
+            {
+                name: 'SuperAnalyticsAgent',
+                status: 'monitoring',
+                description: 'Comprehensive analytics and market insights',
+                capabilities: ['performance_metrics', 'trend_analysis', 'roi_tracking', 'recommendations'],
+                last_update: new Date().toISOString()
+            }
+        ];
+        
+        // Check Ollama LLM status
+        let llmStatus = 'unknown';
+        try {
+            const ollamaResponse = await fetch('http://localhost:11434/api/tags');
+            if (ollamaResponse.ok) {
+                const ollamaData = await ollamaResponse.json();
+                llmStatus = 'active';
+                llmModels = ollamaData.models?.map(m => m.name) || [];
+            }
+        } catch (error) {
+            llmStatus = 'inactive';
+            llmModels = [];
+        }
+        
+        res.json({
+            super_agents: superAgents,
+            llm_status: llmStatus,
+            llm_models: llmModels || [],
+            chain_status: 'operational',
+            last_global_scan: await getLastGlobalScanStatus()
+        });
+        
+    } catch (e) {
+        console.error('Error fetching Super-Agents status:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+async function getLastGlobalScanStatus() {
+    try {
+        const result = await pool.query(`
+            SELECT current_task, last_activity 
+            FROM agent_status 
+            WHERE agent_name = 'SuperScraping' 
+            ORDER BY last_activity DESC 
+            LIMIT 1
+        `);
+        return result.rows[0] || null;
+    } catch (error) {
+        return null;
+    }
+}
+
+// --- Agent Status API (Legacy) ---
 app.get('/api/agents/status', async (req, res) => {
     try {
         const agents = await pool.query(`
@@ -1340,12 +1413,91 @@ app.post('/api/products/bulk', async (req, res) => {
     }
 });
 
-// --- Enhanced Detector Agent Start ---
+// --- Global Scan with Super-Agents Chain ---
+app.post('/api/agents/global-scan/start', async (req, res) => {
+    const { maxProducts = 50, enableLearning = true } = req.body;
+    
+    try {
+        console.log(`🚀 Starting Global Scan with Super-Agents Chain...`);
+        console.log(`📋 Configuration: maxProducts=${maxProducts}, learning=${enableLearning}`);
+        
+        // Update system status
+        await pool.query(
+            'SELECT update_agent_activity($1, $2, $3)',
+            ['SuperScraping', 'active', 'Global scan with LLM analysis in progress...']
+        );
+        
+        // Initialize Super-Agents
+        const SuperScrapingAgent = require('./src/agents/SuperScrapingAgent');
+        const superAgent = new SuperScrapingAgent();
+        
+        // Execute global scan chain
+        superAgent.executeGlobalScan(maxProducts).then(async (result) => {
+            console.log('✅ Global Scan Chain Complete:', result);
+            
+            if (result.success) {
+                // Update agent status to completed
+                await pool.query(
+                    'SELECT update_agent_activity($1, $2, $3)',
+                    ['SuperScraping', 'inactive', `Global scan completed: ${result.scraped} scraped, ${result.analyzed} analyzed, ${result.approved} approved`]
+                );
+                
+                // Update system stats
+                await updateDashboardStats();
+                
+                // Generate analytics if learning enabled
+                if (enableLearning) {
+                    const SuperAnalyticsAgent = require('./src/agents/SuperAnalyticsAgent');
+                    const analyticsAgent = new SuperAnalyticsAgent();
+                    
+                    analyticsAgent.generateComprehensiveReport().then(report => {
+                        console.log('📊 Analytics Report Generated:', report);
+                        
+                        // Store insights for future learning
+                        pool.query(
+                            'INSERT INTO agent_events (agent_name, event_type, event_data, created_at) VALUES ($1, $2, $3, NOW())',
+                            ['AnalyticsAgent', 'global_report', JSON.stringify(report)]
+                        );
+                    });
+                }
+                
+                console.log('🎉 Global Scan Full Chain Completed Successfully!');
+            } else {
+                // Update agent status to error
+                await pool.query(
+                    'SELECT update_agent_activity($1, $2, $3)',
+                    ['SuperScraping', 'error', `Global scan failed: ${result.error}`]
+                );
+            }
+        }).catch(async (err) => {
+            console.error('❌ Global Scan Chain Error:', err);
+            
+            // Update agent status to error
+            await pool.query(
+                'SELECT update_agent_activity($1, $2, $3)',
+                ['SuperScraping', 'error', `Global scan error: ${err.message}`]
+            );
+        });
+
+        res.json({ 
+            status: 'Global Scan Started', 
+            msg: `Super-Agents chain activated: Scraping → Analysis → Content Generation`,
+            chain: ['SuperScrapingAgent', 'SuperContentAgent', 'SuperAnalyticsAgent'],
+            config: { maxProducts, enableLearning }
+        });
+        
+    } catch (error) {
+        console.error('❌ Global Scan Start Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- Enhanced Detector Agent Start (Legacy) ---
 app.post('/api/agents/detector/start', async (req, res) => {
     const { deep = false } = req.body;
     
     try {
-        console.log(`🚀 Starting Detector Agent (deep scan: ${deep})`);
+        console.log(`🚀 Starting Legacy Detector Agent (deep scan: ${deep})`);
         
         // Update agent status in database
         await pool.query(
@@ -1355,7 +1507,7 @@ app.post('/api/agents/detector/start', async (req, res) => {
         
         // Run in background with proper status updates
         detectorAgent.scanMarket().then(async (result) => {
-            console.log('✅ Scan complete:', result);
+            console.log('✅ Legacy Scan complete:', result);
             
             if (result.status === 'success') {
                 // Update agent status to completed
@@ -1364,8 +1516,8 @@ app.post('/api/agents/detector/start', async (req, res) => {
                     ['Detector', 'inactive', `Scan completed: ${result.new_products} new products`]
                 );
                 
-                // Refresh dashboard stats (broadcast to all connected clients if needed)
-                console.log('📊 Dashboard stats updated with new products');
+                // Refresh dashboard stats
+                await updateDashboardStats();
             } else {
                 // Update agent status to error
                 await pool.query(
@@ -1374,7 +1526,7 @@ app.post('/api/agents/detector/start', async (req, res) => {
                 );
             }
         }).catch(async (err) => {
-            console.error('❌ Scan error:', err);
+            console.error('❌ Legacy Scan error:', err);
             
             // Update agent status to error
             await pool.query(
@@ -1382,6 +1534,16 @@ app.post('/api/agents/detector/start', async (req, res) => {
                 ['Detector', 'error', `Scan error: ${err.message}`]
             );
         });
+
+        res.json({ 
+            status: 'Detector Agent Started', 
+            msg: `The agent is browsing Hotmart in background... (Deep scan: ${deep})` 
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
         res.json({ 
             status: 'Detector Agent Started', 
