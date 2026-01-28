@@ -138,17 +138,38 @@ const Dashboard = () => {
 
     const fetchStats = async () => {
         try {
+            console.log('📊 Fetching stats from API...');
             const res = await fetch(import.meta.env.VITE_API_URL + '/api/stats');
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            
             const data = await res.json();
+            console.log('✅ Stats received:', data);
+            
             setStats(data);
-            if (data.system_active !== undefined) setSystemOn(data.system_active);
+            if (data.system_active !== undefined) {
+                setSystemOn(data.system_active);
+                setStatus(data.system_active ? 'ONLINE' : 'OFFLINE');
+            }
         } catch (e) {
-            console.error('Failed to fetch stats', e);
+            console.error('❌ Failed to fetch stats:', e);
             setStats(prev => ({
                 ...prev,
-                status: 'OFFLINE',
-                ping: 0
+                estimated_earnings: 0,
+                selected_products: 0,
+                actual_revenue: 0,
+                tracked_products: 0,
+                new_products: 0,
+                content_generated: 0,
+                content_trend: 0,
+                content_this_week: 0,
+                active_agents: 0,
+                total_agents: 7
             }));
+            setStatus('OFFLINE');
+            setSystemOn(false);
         }
     };
 

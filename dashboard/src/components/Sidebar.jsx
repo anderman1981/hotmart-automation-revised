@@ -53,19 +53,40 @@ const Sidebar = () => {
                 </NavLink>
 
                 {/* System Info Card */}
-                <div className="px-4 py-3 bg-zinc-950/40 rounded-xl mt-4 border border-white/5 flex items-center justify-between group">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 text-xs font-bold">
-                            v1.1
+                <div className="px-4 py-3 bg-zinc-950/40 rounded-xl mt-4 border border-white/5">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 text-xs font-bold">
+                                v1.1
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-zinc-300">System Active</p>
+                                <p className="text-[10px] text-zinc-500 font-mono">
+                                    Branch: <span className="text-emerald-400 truncate max-w-[100px] inline-block align-bottom" title={branchName}>{branchName}</span>
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs font-semibold text-zinc-300">System Active</p>
-                            <p className="text-[10px] text-zinc-500 font-mono">
-                                Branch: <span className="text-emerald-400 truncate max-w-[100px] inline-block align-bottom" title={branchName}>{branchName}</span>
-                            </p>
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse"></div>
+                    </div>
+                    
+                    <div className="space-y-1.5 text-[10px] font-mono">
+                        <div className="flex items-center gap-2">
+                            <span className="text-zinc-500">Status:</span>
+                            <span className="text-emerald-400 font-semibold">PRODUCTION READY</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-zinc-500">Version:</span>
+                            <span className="text-orange-400 font-semibold">v1.1.0</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-zinc-500">Deploy:</span>
+                            <span className="text-blue-400 font-semibold">HIGH</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-zinc-500">Sync:</span>
+                            <span className="text-yellow-400 font-semibold">dev ↔ main</span>
                         </div>
                     </div>
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse"></div>
                 </div>
             </div>
         </aside>

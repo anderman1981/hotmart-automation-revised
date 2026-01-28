@@ -365,11 +365,13 @@ app.post('/api/admin/products/populate', async (req, res) => {
 // --- Dashboard Stats API ---
 app.get('/api/stats', async (req, res) => {
     try {
+        console.log('📊 Fetching dashboard stats...');
+        
         // Products metrics
         const productsCount = await pool.query('SELECT COUNT(*) FROM products');
         const selectedProducts = await pool.query('SELECT COUNT(*) FROM products WHERE selected_for_tracking = TRUE');
-        const totalRevenue = await pool.query('SELECT SUM(total_revenue) FROM products WHERE total_revenue IS NOT NULL');
-        const totalCommissions = await pool.query('SELECT SUM(total_commissions) FROM products WHERE total_commissions IS NOT NULL');
+        const totalRevenue = await pool.query('SELECT COALESCE(SUM(total_revenue), 0) FROM products WHERE total_revenue IS NOT NULL');
+        const totalCommissions = await pool.query('SELECT COALESCE(SUM(total_commissions), 0) FROM products WHERE total_commissions IS NOT NULL');
         
         // Generated content metrics
         const contentGenerated = await pool.query('SELECT COUNT(*) FROM generated_content');
@@ -394,23 +396,23 @@ app.get('/api/stats', async (req, res) => {
         `);
         
         // Calculate content trend
-        const contentThisWeekCount = parseInt(contentThisWeek.rows[0].count);
+        const contentThisWeekCount = parseInt(contentGenerated.rows[0].count);
         const contentLastWeekCount = parseInt(contentLastWeek.rows[0].count);
         const contentTrend = contentLastWeekCount > 0 ? 
             Math.round(((contentThisWeekCount - contentLastWeekCount) / contentLastWeekCount) * 100) : 0;
 
-        res.json({
+        const statsData = {
             // Estimated Earnings
-            estimated_earnings: parseFloat(totalRevenue.rows[0].sum || 0),
+            estimated_earnings: parseFloat(totalRevenue.rows[0].coalesce || 0),
             selected_products: parseInt(selectedProducts.rows[0].count),
-            actual_revenue: parseFloat(totalRevenue.rows[0].sum || 0),
+            actual_revenue: parseFloat(totalRevenue.rows[0].coalesce || 0),
             
             // Tracked Products  
             tracked_products: parseInt(productsCount.rows[0].count),
             new_products: parseInt(newProducts.rows[0].count),
             
             // Generated Content
-            content_generated: parseInt(contentGenerated.rows[0].count),
+            content_generated: contentThisWeekCount,
             content_trend: contentTrend,
             content_this_week: contentThisWeekCount,
             
@@ -420,9 +422,29 @@ app.get('/api/stats', async (req, res) => {
             
             // System status
             system_active: SYSTEM_ACTIVE
-        });
+        };
+
+        console.log('✅ Stats fetched successfully:', statsData);
+        res.json(statsData);
+        
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        console.error('❌ Error fetching stats:', e);
+        res.status(500).json({ 
+            error: e.message,
+            fallback: {
+                estimated_earnings: 0,
+                selected_products: 0,
+                actual_revenue: 0,
+                tracked_products: 0,
+                new_products: 0,
+                content_generated: 0,
+                content_trend: 0,
+                content_this_week: 0,
+                active_agents: 0,
+                total_agents: 7,
+                system_active: false
+            }
+        });
     }
 });
 
