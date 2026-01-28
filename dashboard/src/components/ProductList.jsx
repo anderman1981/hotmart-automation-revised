@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Package, Clock, TrendingUp, AlertCircle, CheckCircle, Activity, Search, Database, Zap, RefreshCw } from 'lucide-react';
+import ProductCard from './ProductCard';
 
 const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }) => {
     const [products, setProducts] = useState([]);
@@ -232,7 +233,7 @@ const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
-                <span className="ml-3 text-gray-600">Cargando productos...</span>
+                <span className="ml-3 text-white">Cargando productos...</span>
             </div>
         );
     }
@@ -240,9 +241,9 @@ const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }
     if (error && !products.length) {
         return (
             <div className="flex flex-col items-center justify-center h-64">
-                <AlertCircle className="h-12 w-12 text-red-500 mb-3" />
-                <p className="text-red-600 font-medium">Error al cargar productos</p>
-                <p className="text-gray-500 text-sm mt-1">{error}</p>
+                <AlertCircle className="h-12 w-12 text-red-400 mb-3" />
+                <p className="text-red-300 font-medium">Error al cargar productos</p>
+                <p className="text-gray-400 text-sm mt-1">{error}</p>
                 <button 
                     onClick={() => fetchProducts(true)}
                     className="mt-3 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
@@ -258,8 +259,8 @@ const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }
             {/* Header with search and filters */}
             <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Productos Hotmart</h2>
-                    <p className="text-gray-600 mt-1">
+                    <h2 className="text-2xl font-bold text-white">Productos Hotmart</h2>
+                    <p className="text-gray-300 mt-1">
                         {filteredProducts.length} de {products.length} productos
                         {isScanning && ` · Escaneando ${scanProgress}%`}
                         {scanResult && ` · Encontrados ${scanResult.new_products} nuevos`}
@@ -306,19 +307,19 @@ const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }
 
             {/* Scan progress indicator */}
             {isScanning && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg backdrop-blur-sm">
                     <div className="flex items-center gap-3">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-                        <span className="text-blue-700 font-medium">Escaneo en progreso: {scanProgress}%</span>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-400"></div>
+                        <span className="text-blue-300 font-medium">Escaneo en progreso: {scanProgress}%</span>
                         {scanResult && scanResult.new_products > 0 && (
-                            <span className="text-green-600 font-medium">
+                            <span className="text-green-400 font-medium">
                                 ✓ {scanResult.new_products} nuevos productos encontrados
                             </span>
                         )}
                     </div>
-                    <div className="mt-2 w-full bg-blue-200 rounded-full h-2">
+                    <div className="mt-2 w-full bg-blue-500/30 rounded-full h-2">
                         <div 
-                            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                            className="bg-blue-400 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${scanProgress}%` }}
                         ></div>
                     </div>
@@ -326,97 +327,35 @@ const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }
             )}
 
             {/* Products Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProducts.map((product) => {
-                    const statusInfo = getStatusInfo(product.status);
-                    const StatusIcon = statusInfo.icon;
-                    
-                    return (
-                        <div key={product.id || product.hotmart_id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-lg transition-shadow">
-                            {/* Header */}
-                            <div className="flex justify-between items-start mb-3">
-                                <h3 className="font-semibold text-gray-900 line-clamp-2 flex-1 mr-2">
-                                    {product.name || 'Sin nombre'}
-                                </h3>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.color}`}>
-                                    <StatusIcon className="h-3 w-3 mr-1" />
-                                    {statusInfo.text}
-                                </span>
-                            </div>
-                            
-                            {/* Description */}
-                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                                {product.description || 'Sin descripción'}
-                            </p>
-                            
-                            {/* Product Details */}
-                            <div className="space-y-2 text-sm">
-                                {product.price && (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Precio:</span>
-                                        <span className="font-medium text-gray-900">{formatPrice(product.price)}</span>
-                                    </div>
-                                )}
-                                
-                                {product.niche && (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Categoría:</span>
-                                        <span className="text-gray-900 capitalize">{product.niche}</span>
-                                    </div>
-                                )}
-                                
-                                {product.performance_score && (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Score:</span>
-                                        <span className="text-gray-900">{Math.round(product.performance_score)}%</span>
-                                    </div>
-                                )}
-                                
-                                {product.created_at && (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Creado:</span>
-                                        <span className="text-gray-900">
-                                            {new Date(product.created_at).toLocaleDateString()}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                            
-                            {/* Action Buttons */}
-                            <div className="mt-4 flex gap-2">
-                                {product.url_sales_page && (
-                                    <a
-                                        href={product.url_sales_page}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex-1 text-center px-3 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition-colors"
-                                    >
-                                        Ver Producto
-                                    </a>
-                                )}
-                                
-                                {product.selected_for_tracking && (
-                                    <button 
-                                        className="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors"
-                                        title="Seleccionado para seguimiento"
-                                    >
-                                        <TrendingUp className="h-4 w-4" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map((product) => (
+                    <ProductCard
+                        key={product.id || product.hotmart_id}
+                        product={product}
+                        onClick={(product) => {
+                            try {
+                                // Abrir página del producto o enlace de afiliado si está disponible
+                                const salesUrl = product.url_sales_page || product.sales_page_url || `https://pay.hotmart.com/${product.hotmart_id}`;
+                                if (salesUrl && salesUrl !== 'https://pay.hotmart.com/undefined') {
+                                    window.open(salesUrl, '_blank');
+                                }
+                            } catch (error) {
+                                console.error('Error handling product click:', error);
+                            }
+                        }}
+                        isSelected={product.selected_for_tracking}
+                    />
+                ))}
             </div>
 
             {/* Empty State */}
             {!loading && filteredProducts.length === 0 && (
                 <div className="text-center py-12">
                     <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    <h3 className="text-lg font-medium text-white mb-2">
                         {searchTerm || filterStatus !== 'all' ? 'No hay productos que coincidan' : 'No hay productos disponibles'}
                     </h3>
-                    <p className="text-gray-500">
+                    <p className="text-gray-300">
                         {searchTerm ? 'Intenta con otra búsqueda' : 
                          filterStatus !== 'all' ? 'Intenta con otro filtro' : 
                          'Inicia un escaneo para descubrir productos'}
@@ -426,7 +365,7 @@ const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }
 
             {/* Status indicator */}
             {lastUpdated && !loading && (
-                <div className="mt-4 text-center text-xs text-gray-500">
+                <div className="mt-4 text-center text-xs text-gray-400">
                     Última actualización: {lastUpdated.toLocaleString()}
                 </div>
             )}

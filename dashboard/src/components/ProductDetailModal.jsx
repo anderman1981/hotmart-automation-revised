@@ -156,7 +156,9 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
                                                 e.target.onerror = null;
-                                                e.target.src = `https://via.placeholder.com/400x300/666666/FFFFFF?text=${encodeURIComponent(productDetails.name)}`;
+                                                const productName = productDetails.name || 'Producto';
+                                                const encodedName = productName.replace(/[^a-zA-Z0-9\s]/g, '').substring(0, 20);
+                                                e.target.src = `https://picsum.photos/seed/${encodedName}/400/300.jpg`;
                                             }}
                                         />
                                     ) : (

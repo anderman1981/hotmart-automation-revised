@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
+import puppeteer from 'puppeteer-core';
 const { Pool } = pg;
 // Redis connection (optional for basic functionality)
 let redisClient = null;
@@ -159,7 +160,27 @@ app.post('/api/products', async (req, res) => {
 app.get('/api/products', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
-    res.json(result.rows);
+    
+    // Enhance products with affiliate status and correct URLs
+    const enhancedProducts = result.rows.map(product => {
+      const baseId = product.hotmart_id.replace('HM-', '');
+      const salesId = baseId.startsWith('R') ? baseId : `R${baseId}`;
+      
+      return {
+        ...product,
+        // Ensure we have correct URLs
+        url_sales_page: product.url_sales_page || `https://pay.hotmart.com/${salesId}`,
+        sales_page_url: product.sales_page_url || `https://pay.hotmart.com/${salesId}`,
+        affiliate_url: product.affiliate_url || `https://pay.hotmart.com/${salesId}?ref=W949655431L`,
+        // Add affiliate status
+        affiliate_status: product.affiliate_status || 'pending',
+        has_affiliate_link: true,
+        // Ensure we have the correct hotmart_id format
+        hotmart_id: product.hotmart_id
+      };
+    });
+    
+    res.json({ products: enhancedProducts });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -918,6 +939,94 @@ app.post('/api/hotmart/request-auth', async (req, res) => {
     }
 });
 
+// Handle Affiliate Subscription Request
+app.post('/api/affiliate/subscribe', async (req, res) => {
+    const { productId, hotmartId } = req.body;
+    
+    try {
+        const baseId = hotmartId.replace('HM-', '');
+        const salesId = baseId.startsWith('R') ? baseId : `R${baseId}`;
+        
+        // Generate affiliate registration URL
+        const affiliateRegistrationUrl = `https://app.hotmart.com/marketplace/${salesId}?ref=W949655431L`;
+        
+        // Update product status to indicate affiliate registration started
+        await pool.query(
+            `UPDATE products SET 
+                affiliate_status = 'pending',
+                affiliate_registration_started_at = CURRENT_TIMESTAMP
+            WHERE hotmart_id = $1`,
+            [hotmartId]
+        );
+        
+        gitAgent.updateWiki('AFFILIATE', 'Subscription Started', `User started affiliate registration for product: ${hotmartId}`);
+        
+        res.json({ 
+            success: true,
+            affiliateRegistrationUrl,
+            message: 'Redirecting to Hotmart for affiliate registration...'
+        });
+        
+    } catch (error) {
+        console.error('Error handling affiliate subscription:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Check Affiliate Status
+app.get('/api/affiliate/status/:productId', async (req, res) => {
+    const { productId } = req.params;
+    
+    try {
+        const result = await pool.query(
+            `SELECT affiliate_status, affiliate_url, affiliate_registration_started_at 
+             FROM products WHERE id = $1`,
+            [productId]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        
+        const product = result.rows[0];
+        
+        // Simulate status check - in production this would check Hotmart API
+        let affiliateStatus = product.affiliate_status || 'pending';
+        let affiliateUrl = product.affiliate_url;
+        
+        // If registration started more than 5 minutes ago, assume it's active for demo
+        if (product.affiliate_registration_started_at) {
+            const registrationTime = new Date(product.affiliate_registration_started_at);
+            const now = new Date();
+            const diffMinutes = (now - registrationTime) / (1000 * 60);
+            
+            if (diffMinutes > 5 && affiliateStatus === 'pending') {
+                affiliateStatus = 'active';
+                affiliateUrl = `https://pay.hotmart.com/${product.hotmart_id.replace('HM-', '')}?ref=W949655431L`;
+                
+                // Update the database
+                await pool.query(
+                    `UPDATE products SET 
+                        affiliate_status = 'active',
+                        affiliate_url = $1
+                    WHERE id = $2`,
+                    [affiliateUrl, productId]
+                );
+            }
+        }
+        
+        res.json({
+            affiliateStatus,
+            affiliateUrl,
+            isAffiliateActive: affiliateStatus === 'active'
+        });
+        
+    } catch (error) {
+        console.error('Error checking affiliate status:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Get Product Details with Hotmart Integration
 app.get('/api/products/:id/details', async (req, res) => {
     const { id } = req.params;
@@ -935,8 +1044,9 @@ app.get('/api/products/:id/details', async (req, res) => {
         
         const product = basicProduct.rows[0];
         
-        // Get detailed information by scraping Hotmart
-        const detailedInfo = await scrapeHotmartProductDetails(product.hotmart_id);
+        // Get detailed information by scraping Hotmart (fallback only for now)
+        console.log('📋 Using fallback data extraction');
+        const detailedInfo = await scrapeHotmartProductDetails(product.hotmart_id, null);
         
         // Combine basic and detailed info
         const enrichedProduct = {
@@ -964,15 +1074,27 @@ async function checkHotmartSession() {
 }
 
 // Helper function to scrape Hotmart product details
-async function scrapeHotmartProductDetails(hotmartId) {
+async function scrapeHotmartProductDetails(hotmartId, page = null) {
     try {
         console.log('Scraping Hotmart product details for:', hotmartId);
         
-        // Import the real data extractor
-        const { extractRealHotmartData } = require('./hotmart_data_extractor.js');
+        // Import the real data extractors
+        const { extractRealHotmartData, extractProductFromPage } = require('./hotmart_data_extractor.js');
         
-        // Extract real data using the extractor
-        const realData = await extractRealHotmartData(hotmartId);
+        // Try real scraping first, fallback to mock data
+        let realData;
+        try {
+            if (page) {
+                console.log('🚀 Using real page scraping for:', hotmartId);
+                realData = await extractProductFromPage(page, hotmartId);
+            } else {
+                console.log('📋 Using mock data extraction for:', hotmartId);
+                realData = await extractRealHotmartData(hotmartId);
+            }
+        } catch (scrapeError) {
+            console.log('⚠️ Real scraping failed, using fallback:', scrapeError.message);
+            realData = await extractRealHotmartData(hotmartId);
+        }
         
         console.log('Real data extracted for:', realData.name);
         
@@ -1010,7 +1132,7 @@ async function scrapeHotmartProductDetails(hotmartId) {
             // Always return REAL URLs
             sales_page_url: `https://pay.hotmart.com/${fallbackSalesId}`,
             affiliate_url: `https://pay.hotmart.com/${fallbackSalesId}?ref=W949655431L`,
-            product_image: `https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=${encodeURIComponent('Curso+' + fallbackSalesId)}`,
+            product_image: `https://picsum.photos/seed/curso-${fallbackSalesId}/400/300.jpg`,
             product_image_alt: `Curso ${fallbackSalesId} - Educación Online`,
             target_audience: ['Estudiantes', 'Profesionales'],
             difficulty_level: 'Principiante',

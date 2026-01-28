@@ -170,7 +170,7 @@ async function extractRealHotmartData(hotmartId) {
                 sales_page_url: `https://pay.hotmart.com/${baseIdWithoutR}`,
                 affiliate_url: `https://pay.hotmart.com/${baseIdWithoutR}?ref=W949655431L`,
                 // Product image (would be scraped in production)
-                product_image: `https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=${encodeURIComponent(productInfo.name)}`,
+                product_image: `https://picsum.photos/seed/${encodeURIComponent(productInfo.name).replace(/[^a-zA-Z0-9]/g, '').substring(0, 15)}/400/300.jpg`,
                 product_image_alt: `${productInfo.name} - Curso Online`,
                 
                 // Additional metadata
@@ -234,7 +234,7 @@ async function extractRealHotmartData(hotmartId) {
                 // URLs
                 sales_page_url: `https://pay.hotmart.com/${baseIdWithoutR}`,
                 affiliate_url: `https://pay.hotmart.com/${baseIdWithoutR}?ref=W949655431L`,
-                product_image: `https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=${encodeURIComponent('Curso+' + baseId)}`,
+                product_image: `https://picsum.photos/seed/curso-${baseId}/400/300.jpg`,
                 product_image_alt: `Curso ${baseId} - Educación Online`,
                 
                 // Metadata
@@ -277,7 +277,7 @@ async function extractRealHotmartData(hotmartId) {
             // Always return real URLs
             sales_page_url: `https://pay.hotmart.com/${baseIdWithoutR}`,
             affiliate_url: `https://pay.hotmart.com/${baseIdWithoutR}?ref=W949655431L`,
-            product_image: `https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=${encodeURIComponent('Curso+' + baseId)}`,
+            product_image: `https://picsum.photos/seed/curso-${baseId}/400/300.jpg`,
             product_image_alt: `Curso ${baseId} - Educación Online`,
             
                 // Fallback metadata

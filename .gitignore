@@ -10,3 +10,4 @@ data/
 *.log
 models/
 errors/
+templates/

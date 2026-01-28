@@ -58,3 +58,5 @@ This document serves as an automated historical registry of all significant acti
 | 2026-01-22 00:57 | CORE | System Start | Manually started via API | GitAgent |
 | 2026-01-22 00:59 | CORE | System Start | Manually started via API | GitAgent |
 | 2026-01-22 00:59 | CORE | System Stop | Manually stopped via API | GitAgent |
+| 2026-01-28 00:34 | AFFILIATE | Subscription Started | User started affiliate registration for product: HM-test | GitAgent |
+| 2026-01-28 00:35 | AFFILIATE | Subscription Started | User started affiliate registration for product: HM-test | GitAgent |

@@ -38,6 +38,8 @@ const logs = [
 const Dashboard = () => {
     const [status, setStatus] = useState('ONLINE');
     const [ping, setPing] = useState(25);
+    const [showScanModal, setShowScanModal] = useState(false);
+    const [scanProducts, setScanProducts] = useState(10);
     const [stats, setStats] = useState({ 
         estimated_earnings: 0,
         selected_products: 0,
@@ -59,7 +61,12 @@ const Dashboard = () => {
 
     // Handle global scan
     const handleGlobalScan = async () => {
-        const toastId = toast.loading('🚀 Starting global marketplace scan...');
+        setShowScanModal(true);
+    };
+
+    const executeGlobalScan = async () => {
+        setShowScanModal(false);
+        const toastId = toast.loading(`🚀 Starting global marketplace scan for ${scanProducts} products...`);
         setLoadingScan(true);
         setIsScanning(true);
         setScanProgress(0);
@@ -73,70 +80,60 @@ const Dashboard = () => {
             if (progress >= 100) {
                 clearInterval(progressInterval);
                 
-                const mockProducts = Math.floor(Math.random() * 15) + 8; // 8-22 new products
-                
-                setTimeout(() => {
-                    toast.success(`✅ Global scan completed! Found ${mockProducts} new products.`, { id: toastId });
-                    
-                    // Update stats to reflect new products
-                    setStats(prev => ({
-                        ...prev,
-                        tracked_products: prev.tracked_products + mockProducts,
-                        new_products: mockProducts
-                    }));
-                    
-                    // Set scan result for ProductList
-                    setScanResult({
-                        new_products: mockProducts,
-                        total_products: mockProducts,
-                        scan_time: new Date().toISOString()
+                // Get current products and simulate finding new ones
+                fetch(`${import.meta.env.VITE_API_URL}/api/products`)
+                    .then(res => res.json())
+                    .then(productsData => {
+                        const currentProducts = Array.isArray(productsData) ? productsData : productsData.products || [];
+                        const totalProducts = currentProducts.length;
+                        
+                        // Simulate finding new products (limited by user input)
+                        const newProducts = Math.floor(Math.random() * Math.min(scanProducts, 5)) + 1;
+                        
+                        setTimeout(() => {
+                            toast.success(`✅ Global scan completed! Found ${newProducts} new products.`, { id: toastId });
+                            
+                            // Update stats
+                            setStats(prev => ({
+                                ...prev,
+                                tracked_products: totalProducts + newProducts,
+                                new_products: newProducts
+                            }));
+                            
+                            // Set scan result
+                            setScanResult({
+                                new_products: newProducts,
+                                total_products: totalProducts + newProducts,
+                                scan_time: new Date().toISOString()
+                            });
+                            
+                            setLoadingScan(false);
+                            setIsScanning(false);
+                            setScanProgress(0);
+                            
+                            // Clear scan result after 10 seconds
+                            setTimeout(() => setScanResult(null), 10000);
+                            
+                            // Dispatch event to notify Products page to refresh
+                            window.dispatchEvent(new CustomEvent('scanComplete', {
+                                detail: { 
+                                    newProducts: newProducts,
+                                    totalProducts: totalProducts + newProducts
+                                }
+                            }));
+                            
+                            console.log(`📦 Scan completed: ${newProducts} new products simulated`);
+                        }, 500);
+                    })
+                    .catch(err => {
+                        console.error('Error getting products:', err);
+                        setLoadingScan(false);
+                        setIsScanning(false);
+                        setScanProgress(0);
+                        toast.error('❌ Error loading products. Please try again.', { id: toastId });
                     });
-                    
-                    setLoadingScan(false);
-                    setIsScanning(false);
-                    setScanProgress(0);
-                    
-                    // Clear scan result after 10 seconds
-                    setTimeout(() => setScanResult(null), 10000);
-                    
-                    console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
-                }, 500);
             }
         }, 800);
-        
-        // Error handling fallback
-        try {
-            setTimeout(() => {
-                const mockProducts = Math.floor(Math.random() * 15) + 8;
-                
-                toast.success(`✅ Global scan completed! Found ${mockProducts} new products.`, { id: toastId });
-                
-                setStats(prev => ({
-                    ...prev,
-                    tracked_products: prev.tracked_products + mockProducts,
-                    new_products: mockProducts
-                }));
-                
-                setScanResult({
-                    new_products: mockProducts,
-                    total_products: mockProducts,
-                    scan_time: new Date().toISOString()
-                });
-                
-                setLoadingScan(false);
-                setIsScanning(false);
-                setScanProgress(0);
-                
-                setTimeout(() => setScanResult(null), 10000);
-                
-                console.log(`📦 Mock scan completed: ${mockProducts} new products added to database`);
-            }, 4000);
-        } catch (error) {
-            console.error('Error starting global scan:', error);
-            toast.error('❌ Scan failed. Please try again.', { id: toastId });
-            setLoadingScan(false);
-            setIsScanning(false);
-        }
     };
 
     const fetchStats = async () => {
@@ -450,15 +447,115 @@ const Dashboard = () => {
                 </motion.div>
             </div>
 
-            {/* Productos en Tiempo Real - Sección completa */}
+            {/* Recent Activity Summary */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="space-y-6"
+                className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6"
             >
-                <ProductList isScanning={isScanning} scanProgress={scanProgress} scanResult={scanResult} />
+                <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                    <Package className="h-5 w-5 text-emerald-500" />
+                    Product Activity
+                </h3>
+                <div className="text-slate-400">
+                    <p>Total Products: <span className="text-white font-semibold">{stats.tracked_products}</span></p>
+                    <p>New Products: <span className="text-emerald-400 font-semibold">{stats.new_products}</span></p>
+                    {isScanning && (
+                        <div className="mt-3">
+                            <div className="flex justify-between text-sm mb-1">
+                                <span>Scanning Progress</span>
+                                <span>{scanProgress}%</span>
+                            </div>
+                            <div className="w-full bg-slate-700 rounded-full h-2">
+                                <div 
+                                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${scanProgress}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <button 
+                    onClick={() => window.location.href = '/products'}
+                    className="mt-4 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition-colors"
+                >
+                    View All Products →
+                </button>
             </motion.div>
+
+            {/* Scan Modal */}
+            <AnimatePresence>
+                {showScanModal && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowScanModal(false)}
+                >
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                        className="bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700/50 rounded-2xl p-8 max-w-md w-full shadow-2xl shadow-black/20"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                                <Zap className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-white">Global Scan Settings</h2>
+                                <p className="text-slate-400 text-sm">Configure your marketplace scan parameters</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Number of Products to Evaluate
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={scanProducts}
+                                        onChange={(e) => setScanProducts(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                                        className="w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                                        placeholder="Enter number of products"
+                                    />
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
+                                        products
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Recommended: 5-25 products for optimal performance
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={() => setShowScanModal(false)}
+                                    className="flex-1 px-4 py-3 bg-slate-700/50 text-slate-300 rounded-xl font-medium hover:bg-slate-600/50 transition-all duration-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={executeGlobalScan}
+                                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-medium hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25"
+                                >
+                                    <Zap className="h-4 w-4" />
+                                    Start Scan
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
         </div>
     );
 };

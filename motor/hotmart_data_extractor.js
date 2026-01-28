@@ -127,7 +127,7 @@ async function extractRealHotmartData(hotmartId) {
                 ...productInfo,
                 sales_page_url: `https://pay.hotmart.com/${baseIdWithoutR}`,
                 affiliate_url: `https://pay.hotmart.com/${baseIdWithoutR}?ref=W949655431L`,
-                product_image: `https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=${encodeURIComponent(productInfo.name)}`,
+                product_image: `https://picsum.photos/seed/${encodeURIComponent(productInfo.name).replace(/[^a-zA-Z0-9]/g, '').substring(0, 15)}/400/300.jpg`,
                 product_image_alt: `${productInfo.name} - Curso Online`,
                 target_audience: productInfo.topics || ['General'],
                 difficulty_level: productInfo.level || 'Principiante',
@@ -174,7 +174,7 @@ async function extractRealHotmartData(hotmartId) {
                 highlights: ['Resultados garantizados', 'Acceso por vida', 'Soporte técnico'],
                 sales_page_url: `https://pay.hotmart.com/${baseIdWithoutR}`,
                 affiliate_url: `https://pay.hotmart.com/${baseIdWithoutR}?ref=W949655431L`,
-                product_image: `https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=${encodeURIComponent('Curso+' + baseId)}`,
+                product_image: `https://picsum.photos/seed/curso-${baseId}/400/300.jpg`,
                 product_image_alt: `Curso ${baseId} - Educación Online`,
                 target_audience: ['Estudiantes', 'Profesionales'],
                 difficulty_level: 'Principiante',
@@ -216,7 +216,7 @@ async function extractRealHotmartData(hotmartId) {
             highlights: ['Contenido educativo'],
             sales_page_url: `https://pay.hotmart.com/${baseIdWithoutR}`,
             affiliate_url: `https://pay.hotmart.com/${baseIdWithoutR}?ref=W949655431L`,
-            product_image: `https://via.placeholder.com/400x300/FF6B35/FFFFFF?text=${encodeURIComponent('Curso+' + baseIdWithoutR)}`,
+            product_image: `https://picsum.photos/seed/curso-${baseIdWithoutR}/400/300.jpg`,
             product_image_alt: `Curso ${baseIdWithoutR} - Educación Online`,
             priority_score: 50,
             target_audience: ['Estudiantes', 'Profesionales'],
@@ -240,4 +240,162 @@ async function extractRealHotmartData(hotmartId) {
     }
 }
 
-export { extractRealHotmartData };
+// Nueva función de scraping real basada en selectores CSS del HTML
+async function extractProductFromPage(page, hotmartId) {
+    try {
+        console.log('🔍 Starting real scraping for Hotmart ID:', hotmartId);
+        
+        const baseId = hotmartId.replace('HM-', '');
+        const productUrl = `https://pay.hotmart.com/${baseId}`;
+        
+        await page.goto(productUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        
+        // Esperar a que cargue el contenido principal
+        await page.waitForSelector('[data-testid="product-details-info"]', { timeout: 10000 });
+        
+        const productData = await page.evaluate(() => {
+            // Selectores CSS basados en el ejemplo HTML
+            const selectors = {
+                id: 'span.gray-500',
+                name: 'h3._text-4._text-lg-5._mb-0',
+                image: 'img.product-details-info__product-image',
+                producerName: '.about-producer h5',
+                producerImage: '.about-producer img[alt="avatar image"]',
+                description: '[data-testid="product-title-section"]',
+                affiliateButton: 'button[data-testid="button"] p._text-break',
+                affiliateTable: 'table[data-testid="table-component"]'
+            };
+            
+            // Extraer ID del producto
+            const idElement = document.querySelector(selectors.id);
+            const productId = idElement ? 
+                idElement.textContent.replace('ID', '').replace(/\D/g, '').trim() : null;
+            
+            // Extraer nombre del producto
+            const nameElement = document.querySelector(selectors.name);
+            const productName = nameElement ? nameElement.textContent.trim() : null;
+            
+            // Extraer imagen del producto
+            const imageElement = document.querySelector(selectors.image);
+            const productImage = imageElement ? imageElement.src : null;
+            
+            // Extraer información del productor
+            const producerNameElement = document.querySelector(selectors.producerName);
+            const producerName = producerNameElement ? producerNameElement.textContent.trim() : null;
+            
+            const producerImageElement = document.querySelector(selectors.producerImage);
+            const producerImage = producerImageElement ? producerImageElement.src : null;
+            
+            // Extraer descripción del producto
+            const descriptionElement = document.querySelector(selectors.description);
+            let description = null;
+            if (descriptionElement) {
+                // Extraer texto del producto, excluyendo el nombre y otros elementos
+                const fullText = descriptionElement.textContent;
+                if (productName) {
+                    description = fullText.replace(productName, '').trim().substring(0, 500);
+                } else {
+                    description = fullText.trim().substring(0, 500);
+                }
+            }
+            
+            // Extraer métricas (rating, temperatura, blueprint)
+            const extractMetric = (keyword) => {
+                const svgElements = document.querySelectorAll('svg');
+                for (let svg of svgElements) {
+                    if (svg.getAttribute('data-prefix') === 'fas' && 
+                        svg.getAttribute('data-icon') === keyword) {
+                        const strongElement = svg.closest('hot-tag')?.querySelector('strong');
+                        return strongElement ? strongElement.textContent.trim() : null;
+                    }
+                }
+                return null;
+            };
+            
+            const rating = extractMetric('star');
+            const temperature = extractMetric('fire');
+            const blueprintScore = extractMetric('file-chart-line');
+            
+            // Extraer información de afiliación
+            const affiliateButton = document.querySelector(selectors.affiliateButton);
+            const hasAffiliateProgram = affiliateButton ? 
+                affiliateButton.textContent.includes('Afíliate') : false;
+            
+            // Extraer tabla de afiliación si existe
+            let commissionRate = null;
+            let cookieValidity = null;
+            let assignmentRule = null;
+            
+            const affiliateTable = document.querySelector(selectors.affiliateTable);
+            if (affiliateTable) {
+                const rows = affiliateTable.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length === 2) {
+                        const label = cells[0].textContent.trim();
+                        const value = cells[1].textContent.trim();
+                        
+                        if (label.includes('Comisión')) {
+                            commissionRate = value.replace('%', '').trim();
+                        }
+                        if (label.includes('Cookies')) {
+                            cookieValidity = value.replace('días', '').trim();
+                        }
+                        if (label.includes('Asignación')) {
+                            assignmentRule = value;
+                        }
+                    }
+                });
+            }
+            
+            // Generar URLs correctas
+            const baseUrl = `https://pay.hotmart.com/${productId || baseId}`;
+            
+            return {
+                hotmart_id: productId,
+                name: productName,
+                product_image: productImage,
+                product_image_alt: productName ? `${productName} - Curso Online` : null,
+                description: description,
+                producer_name: producerName,
+                producer_image: producerImage,
+                rating: rating ? parseFloat(rating) : null,
+                temperature: temperature ? temperature.replace('°', '') : null,
+                blueprint_score: blueprintScore ? blueprintScore.replace('%', '') : null,
+                has_affiliate_program: hasAffiliateProgram,
+                commission_rate: commissionRate ? parseFloat(commissionRate) : null,
+                cookie_validity_days: cookieValidity ? parseInt(cookieValidity) : null,
+                assignment_rule: assignmentRule,
+                sales_page_url: baseUrl,
+                affiliate_url: hasAffiliateProgram ? `${baseUrl}?ref=W949655431L` : null,
+                affiliate_status: hasAffiliateProgram ? 'active' : 'unavailable',
+                extracted_at: new Date().toISOString(),
+                
+                // Campos adicionales para compatibilidad
+                niche: 'Education',
+                category: 'Online Course',
+                price: null, // Se podría extraer de otros elementos
+                students: null,
+                conversion_rate: blueprintScore ? parseFloat(blueprintScore) : null,
+                performance_score: blueprintScore ? parseFloat(blueprintScore) : null
+            };
+        });
+        
+        console.log('✅ Real extraction completed:', {
+            id: productData.hotmart_id,
+            name: productData.name,
+            has_image: !!productData.product_image,
+            has_affiliate: productData.has_affiliate_program,
+            commission: productData.commission_rate
+        });
+        
+        return productData;
+        
+    } catch (error) {
+        console.error('❌ Real extraction failed:', error.message);
+        // Fallback a la función existente
+        return await extractRealHotmartData(hotmartId);
+    }
+}
+
+export { extractRealHotmartData, extractProductFromPage };
