@@ -1303,6 +1303,64 @@ app.get('/api/session/status', async (req, res) => {
 
 // --- BROWSER SESSION DETECTION END ---
 
+// --- AFFILIATE REDIRECT ---
+import { generateSalesUrl, generateAffiliateUrl } from './src/utils/HotmartURLGenerator.js';
+
+// Redirect to Hotmart sales page with affiliate tracking
+app.get('/api/redirect/:productId', async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { ref } = req.query; // Optional affiliate code override
+        
+        // Look up product in database
+        const result = await pool.query(
+            'SELECT hotmart_id, name, affiliate_url, url_sales_page FROM products WHERE hotmart_id = $1',
+            [productId]
+        );
+        
+        if (result.rows.length > 0) {
+            const product = result.rows[0];
+            const redirectUrl = ref 
+                ? generateAffiliateUrl(product.hotmart_id, ref)
+                : product.affiliate_url || generateAffiliateUrl(product.hotmart_id);
+            
+            logger.info('Affiliate redirect', { productId, redirectUrl });
+            res.redirect(302, redirectUrl);
+        } else {
+            // Fallback - generate URL from ID
+            const fallbackUrl = generateAffiliateUrl(productId, ref);
+            res.redirect(302, fallbackUrl);
+        }
+    } catch (e) {
+        logger.error('Redirect error', { error: e.message });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get all products with proper URLs for display
+app.get('/api/products/urls', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT id, hotmart_id, name, niche, url_sales_page, affiliate_url, status, commission_rate FROM products ORDER BY created_at DESC'
+        );
+        
+        const products = result.rows.map(p => ({
+            ...p,
+            // Ensure URLs are always present
+            url_sales_page: p.url_sales_page || generateSalesUrl(p.hotmart_id),
+            affiliate_url: p.affiliate_url || generateAffiliateUrl(p.hotmart_id),
+            // Generate short redirect URL
+            redirect_url: `${req.protocol}://${req.get('host')}/api/redirect/${p.hotmart_id}`
+        }));
+        
+        res.json({ products, total: products.length });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- AFFILIATE REDIRECT END ---
+
 // Hotmart Authorization Check
 app.get('/api/hotmart/check-auth', async (req, res) => {
     try {

@@ -1,5 +1,6 @@
 import { launch } from 'puppeteer-core';
 import { Pool } from 'pg';
+import { generateSalesUrl, generateAffiliateUrl } from '../utils/HotmartURLGenerator.js';
 
 const DetectorAgent = {
     name: 'DetectorAgent',
@@ -196,15 +197,20 @@ const DetectorAgent = {
                         );
                         
                         if (existsResult.rows.length === 0) {
+                            // Generate proper Hotmart URLs
+                            const salesUrl = generateSalesUrl(product.hotmart_id);
+                            const affiliateUrl = generateAffiliateUrl(product.hotmart_id);
+                            
                             // Insert new product
                             await pool.query(`
-                                INSERT INTO products (hotmart_id, name, niche, url_sales_page, status, commission_rate, created_at, updated_at)
-                                VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+                                INSERT INTO products (hotmart_id, name, niche, url_sales_page, affiliate_url, status, commission_rate, created_at, updated_at)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
                             `, [
                                 product.hotmart_id,
                                 product.name,
                                 product.niche,
-                                product.url_sales_page || `https://hotmart.com/product/${product.hotmart_id}`,
+                                salesUrl,
+                                affiliateUrl,
                                 'testing',
                                 product.commission_rate || 40.00
                             ]);
