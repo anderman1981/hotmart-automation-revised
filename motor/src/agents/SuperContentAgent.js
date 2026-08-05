@@ -1,16 +1,18 @@
-const { Pool } = require('pg');
-const ContentAgent = require('./ContentAgent');
+import pg from 'pg';
+import contentAgentInstance from './ContentAgent.js';
+import InstagramAgent from './InstagramAgent.js';
+const { Pool } = pg;
 
 class SuperContentAgent {
     constructor() {
         this.name = 'SuperContentAgent';
-        this.contentAgent = new ContentAgent();
+        this.contentAgent = contentAgentInstance;
         this.pool = new Pool({
             user: process.env.DB_USER,
             host: process.env.DB_HOST,
             database: process.env.DB_NAME,
             password: process.env.DB_PASSWORD,
-            port: 5432,
+            port: parseInt(process.env.DB_PORT || '5432'),
         });
     }
 
@@ -239,7 +241,6 @@ class SuperContentAgent {
         
         try {
             // Importar y activar el InstagramAgent existente
-            const InstagramAgent = require('./InstagramAgent');
             const instagramAgent = new InstagramAgent();
             
             // Filtrar solo contenido de Instagram
@@ -277,4 +278,4 @@ class SuperContentAgent {
     }
 }
 
-module.exports = SuperContentAgent;
+export default SuperContentAgent;

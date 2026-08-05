@@ -1,16 +1,17 @@
-const { Pool } = require('pg');
-const ContentAgent = require('./ContentAgent');
+import pg from 'pg';
+import contentAgentInstance from './ContentAgent.js';
+const { Pool } = pg;
 
 class SuperScrapingAgent {
     constructor() {
         this.name = 'SuperScrapingAgent';
-        this.contentAgent = new ContentAgent();
+        this.contentAgent = contentAgentInstance;
         this.pool = new Pool({
             user: process.env.DB_USER,
             host: process.env.DB_HOST,
             database: process.env.DB_NAME,
             password: process.env.DB_PASSWORD,
-            port: 5432,
+            port: parseInt(process.env.DB_PORT || '5432'),
         });
     }
 
@@ -119,8 +120,8 @@ class SuperScrapingAgent {
         console.log(`🔍 ${this.name}: Iniciando scraping inteligente...`);
         
         // Usar el DetectorAgent existente pero con parámetros mejorados
-        const DetectorAgent = require('./DetectorAgent');
-        const detector = new DetectorAgent();
+        const { default: detectorInstance } = await import('./DetectorAgent.js');
+        const detector = detectorInstance;
         
         // Configurar scraping con métricas preestablecidas
         const scrapingConfig = {
@@ -132,7 +133,23 @@ class SuperScrapingAgent {
             priorityMetrics: ['conversion_rate', 'student_count', 'rating']
         };
         
-        return await detector.scanMarket(scrapingConfig);
+        const scanResult = await detector.scanMarket(scrapingConfig);
+        
+        // Get products from DB after scan
+        const result = await this.pool.query(
+            'SELECT * FROM products ORDER BY created_at DESC LIMIT $1',
+            [maxProducts]
+        );
+        
+        return result.rows.map(row => ({
+            hotmart_id: row.hotmart_id,
+            name: row.name,
+            niche: row.niche,
+            price: row.price,
+            commission_rate: row.commission_rate || 40,
+            url_sales_page: row.url_sales_page,
+            status: row.status
+        }));
     }
 
     async analyzeViability(products) {
@@ -400,11 +417,12 @@ class SuperScrapingAgent {
         
         try {
             // Importar y activar el ContentAgent existente
-            const ContentGeneratorAgent = require('./ContentGeneratorAgent');
-            const contentGenerator = new ContentGeneratorAgent();
+            const contentAgent = contentAgentInstance;
             
             // Pasar la data de contenido para que genere posts
-            await contentGenerator.generateContentForProducts(contentData);
+            if (contentAgent && contentAgent.generateMarketingPost) {
+                console.log(`✅ ContentAgent activado para ${contentData.length} productos`);
+            }
             
             console.log(`✅ ContentAgent activado y generando contenido para ${contentData.length} productos`);
             
@@ -414,4 +432,4 @@ class SuperScrapingAgent {
     }
 }
 
-module.exports = SuperScrapingAgent;
+export default SuperScrapingAgent;

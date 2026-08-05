@@ -1,4 +1,5 @@
-const { Pool } = require('pg');
+import pg from 'pg';
+const { Pool } = pg;
 
 class SuperAnalyticsAgent {
     constructor() {
@@ -8,7 +9,7 @@ class SuperAnalyticsAgent {
             host: process.env.DB_HOST,
             database: process.env.DB_NAME,
             password: process.env.DB_PASSWORD,
-            port: 5432,
+            port: parseInt(process.env.DB_PORT || '5432'),
         });
     }
 
@@ -400,4 +401,4 @@ class SuperAnalyticsAgent {
     }
 }
 
-module.exports = SuperAnalyticsAgent;
+export default SuperAnalyticsAgent;

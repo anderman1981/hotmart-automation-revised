@@ -55,12 +55,10 @@ try {
 }
 import fs from 'fs';
 import path from 'path';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
-const multiparty = require('multiparty');
 import { fileURLToPath } from 'url';
 import cron from 'node-cron';
+const pdf = (await import('pdf-parse')).default;
+const multiparty = (await import('multiparty')).default;
 
 // Define __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -761,7 +759,7 @@ app.post('/api/metrics', async (req, res) => {
 });
 
 // Import agents
-const detectorAgent = require('./src/agents/DetectorAgent.js');
+const { default: detectorAgent } = await import('./src/agents/DetectorAgent.js');
 const { default: instagramAgent } = await import('./src/agents/InstagramAgent.js');
 const { default: contentAgent } = await import('./src/agents/ContentAgent.js');
 const { default: assetsAgent } = await import('./src/agents/AssetsAgent.js');
@@ -1263,6 +1261,48 @@ app.post('/api/products/reactivate', async (req, res) => {
     }
 });
 
+// --- BROWSER SESSION DETECTION ---
+import browserSessionManager from './src/agents/BrowserSessionManager.js';
+
+// Detectar sesión de navegador Hotmart
+app.post('/api/session/detect', 
+    generalRateLimit,
+    async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+        
+        logger.info('Detecting browser session', { email: email.substring(0, 3) + '***' });
+        
+        const result = await browserSessionManager.detectBrowserSession(email);
+        
+        logSecurityEvent('SESSION_DETECT', { 
+            valid: result.valid, 
+            email: email.substring(0, 3) + '***' 
+        }, req);
+        
+        res.json(result);
+    } catch (e) {
+        logger.error('Session detection error', { error: e.message });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Verificar estado de sesión actual
+app.get('/api/session/status', async (req, res) => {
+    try {
+        const status = browserSessionManager.getSessionStatus();
+        res.json(status);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- BROWSER SESSION DETECTION END ---
+
 // Hotmart Authorization Check
 app.get('/api/hotmart/check-auth', async (req, res) => {
     try {
@@ -1446,7 +1486,7 @@ async function scrapeHotmartProductDetails(hotmartId, page = null) {
         logger.info('Scraping Hotmart product details', { hotmartId });
         
         // Import the real data extractors
-        const { extractRealHotmartData, extractProductFromPage } = require('./hotmart_data_extractor.js');
+        const { extractRealHotmartData, extractProductFromPage } = await import('./hotmart_data_extractor.js');
         
         // Try real scraping first, fallback to mock data
         let realData;
@@ -1686,7 +1726,7 @@ app.post('/api/products/bulk', async (req, res) => {
 });
 
 // --- Global Scan with Super-Agents Chain ---
-app.post('/api/agents/global-scan/start', async (req, res) => {
+app.post('/api/global-scan/start', async (req, res) => {
     const { maxProducts = 50, enableLearning = true } = req.body;
     
     // Check for existing running scan
@@ -1727,7 +1767,7 @@ app.post('/api/agents/global-scan/start', async (req, res) => {
         );
         
         // Initialize Super-Agents
-        const SuperScrapingAgent = require('./src/agents/SuperScrapingAgent');
+        const { default: SuperScrapingAgent } = await import('./src/agents/SuperScrapingAgent.js');
         const superAgent = new SuperScrapingAgent();
         
         // Execute global scan chain with timeout and error handling
@@ -1751,7 +1791,7 @@ app.post('/api/agents/global-scan/start', async (req, res) => {
                 // Generate analytics if learning enabled
                 if (enableLearning) {
                     try {
-                        const SuperAnalyticsAgent = require('./src/agents/SuperAnalyticsAgent');
+                        const { default: SuperAnalyticsAgent } = await import('./src/agents/SuperAnalyticsAgent.js');
                         const analyticsAgent = new SuperAnalyticsAgent();
                         
                         const analyticsTimeout = setTimeout(() => {
@@ -1820,6 +1860,16 @@ app.post('/api/agents/global-scan/start', async (req, res) => {
     }
 });
 
+// Update dashboard stats from database
+async function updateDashboardStats() {
+    try {
+        const productsCount = await pool.query('SELECT COUNT(*) FROM products');
+        logger.info('Dashboard stats updated', { products: parseInt(productsCount.rows[0].count) });
+    } catch (error) {
+        logger.error('Error updating dashboard stats', { error: error.message });
+    }
+}
+
 // Clean up zombie scans
 async function cleanupZombieScans() {
     try {
@@ -1858,7 +1908,7 @@ app.post('/api/agents/cleanup', async (req, res) => {
         
         // Also clean up any stuck browser processes (if any)
         try {
-            const { exec } = require('child_process');
+            const { exec } = await import('child_process');
             exec('pkill -f "puppeteer" || pkill -f "chrome" || true', (error, stdout, stderr) => {
                 if (error && !error.message.includes('No such process')) {
                     console.log('Process cleanup attempt:', error.message);

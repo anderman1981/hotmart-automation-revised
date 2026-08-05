@@ -26,6 +26,7 @@ const DetectorAgent = {
                 console.log('🚀 Initializing browser...');
                 this.browser = await launch({ 
                     headless: 'new',
+                    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
                     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
                 });
             }
@@ -175,7 +176,7 @@ const DetectorAgent = {
                 host: process.env.DB_HOST,
                 database: process.env.DB_NAME,
                 password: process.env.DB_PASSWORD,
-                port: 5432,
+                port: parseInt(process.env.DB_PORT || '5432'),
             });
             
             let insertedCount = 0;
@@ -190,14 +191,14 @@ const DetectorAgent = {
                     try {
                         // Check if product already exists
                         const existsResult = await pool.query(
-                            'SELECT id, last_seen_at FROM products WHERE hotmart_id = $1',
+                            'SELECT id FROM products WHERE hotmart_id = $1',
                             [product.hotmart_id]
                         );
                         
                         if (existsResult.rows.length === 0) {
                             // Insert new product
                             await pool.query(`
-                                INSERT INTO products (hotmart_id, name, niche, url_sales_page, status, affiliate_commission, created_at, updated_at)
+                                INSERT INTO products (hotmart_id, name, niche, url_sales_page, status, commission_rate, created_at, updated_at)
                                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
                             `, [
                                 product.hotmart_id,
@@ -213,7 +214,7 @@ const DetectorAgent = {
                         } else {
                             // Update existing products
                             await pool.query(
-                                'UPDATE products SET updated_at = NOW(), affiliate_commission = $1 WHERE hotmart_id = $2',
+                                'UPDATE products SET updated_at = NOW(), commission_rate = $1 WHERE hotmart_id = $2',
                                 [product.commission_rate || 40.00, product.hotmart_id]
                             );
                             updatedCount++;
@@ -258,7 +259,8 @@ const DetectorAgent = {
         try {
             if (!this.browser) {
                 this.browser = await launch({ 
-                    headless: 'new'
+                    headless: 'new',
+                    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
                 });
             }
             
