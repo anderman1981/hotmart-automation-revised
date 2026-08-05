@@ -1,3 +1,4 @@
+import API_BASE from '../api';
 import React, { useState, useEffect } from 'react';
 import { Package, Snowflake, Trash2, CheckSquare, Square, Eye, RefreshCw } from 'lucide-react';
 import ProductDetailModal from '../components/ProductDetailModal';
@@ -27,7 +28,7 @@ const Products = () => {
             const productIds = Array.from(selectedProducts);
             
             // Call API to move products to freezer
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/move-to-freezer`, {
+            const response = await fetch(`${API_BASE}/api/products/move-to-freezer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ productIds })
@@ -52,7 +53,7 @@ const Products = () => {
             const productIds = Array.from(selectedProducts);
             
             // Call API to reactivate products
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/reactivate`, {
+            const response = await fetch(`${API_BASE}/api/products/reactivate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ productIds })
@@ -94,7 +95,7 @@ const Products = () => {
     }, []);
 
     const fetchProducts = () => {
-        fetch(import.meta.env.VITE_API_URL + '/api/products')
+        fetch(API_BASE + '/api/products')
             .then(res => res.json())
             .then(data => {
                 // Handle both direct array and wrapped response

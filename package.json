@@ -1,5 +1,24 @@
 {
   "dependencies": {
-    "node-fetch": "^3.3.2"
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "node-fetch": "^3.3.2",
+    "proxy-chain": "^2.7.1",
+    "puppeteer": "^24.36.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-recaptcha": "^3.6.8",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "pg": "^8.11.3"
+  },
+  "scripts": {
+    "test": "node scripts/test-runner.js",
+    "test:unit": "node scripts/test-runner.js unit",
+    "test:integration": "node scripts/test-runner.js integration", 
+    "test:e2e": "node scripts/test-runner.js e2e",
+    "test:coverage": "node scripts/test-runner.js coverage",
+    "test:all": "node scripts/test-runner.js all",
+    "test:install": "node scripts/test-runner.js install",
+    "test:env": "node scripts/test-runner.js env",
+    "test:report": "node scripts/test-runner.js report"
   }
 }

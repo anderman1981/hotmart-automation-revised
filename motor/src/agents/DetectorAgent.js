@@ -10,103 +10,144 @@ const DetectorAgent = {
         return true;
     },
     
-    scanMarket: async function() {
-        console.log('🔍 Starting real market scan from Hotmart marketplace...');
+    scanMarket: async function(config = {}) {
+        const { maxProducts = 50, timeoutMs = 45000 } = config;
+        console.log(`🔍 Starting market scan (max: ${maxProducts} products, timeout: ${timeoutMs}ms)...`);
         
         let scrapedProducts = [];
+        let page = null;
+        let scanStartTime = Date.now();
         
         try {
+            // Check if we should use mock data based on timeout
+            const BROWSER_TIMEOUT = Math.min(timeoutMs - 5000, 30000); // Reserve 5s for fallback
+            
             if (!this.browser) {
+                console.log('🚀 Initializing browser...');
                 this.browser = await launch({ 
                     headless: 'new',
-                    args: ['--no-sandbox', '--disable-setuid-sandbox']
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
                 });
             }
             
-            const page = await this.browser.newPage();
+            page = await this.browser.newPage();
             await page.setViewport({ width: 1920, height: 1080 });
             
-            // Navigate to Hotmart marketplace
+            // Set navigation timeout
+            page.setDefaultNavigationTimeout(BROWSER_TIMEOUT);
+            page.setDefaultTimeout(BROWSER_TIMEOUT);
+            
+            // Navigate to Hotmart marketplace with timeout
             console.log('🌐 Accessing Hotmart marketplace...');
-            await page.goto('https://hotmart.com/marketplace', { 
-                waitUntil: 'networkidle2', 
-                timeout: 60000 
-            });
+            await Promise.race([
+                page.goto('https://hotmart.com/marketplace', { 
+                    waitUntil: 'networkidle2', 
+                    timeout: BROWSER_TIMEOUT 
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Navigation timeout')), BROWSER_TIMEOUT)
+                )
+            ]);
             
-            // Wait for products to load
-            await page.waitForSelector('[data-testid="product-card"], .product-card, .course-card', { timeout: 10000 });
+            // Wait for products to load with timeout
+            await Promise.race([
+                page.waitForSelector('[data-testid="product-card"], .product-card, .course-card', { timeout: 10000 }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Product load timeout')), 10000)
+                )
+            ]);
             
-            // Extract product information
-            scrapedProducts = await page.evaluate(() => {
-                const products = [];
-                const productCards = document.querySelectorAll('[data-testid="product-card"], .product-card, .course-card, .hp-product-card');
-                
-                productCards.forEach((card, index) => {
-                    try {
-                        // Extract product title
-                        const titleElement = card.querySelector('h3, .product-title, .course-title, [data-testid="product-title"]');
-                        const title = titleElement ? titleElement.textContent.trim() : `Producto ${index + 1}`;
-                        
-                        // Extract price
-                        const priceElement = card.querySelector('[data-testid="price"], .price, .course-price');
-                        let price = 97.00; // Default price
-                        if (priceElement) {
-                            const priceText = priceElement.textContent.replace(/[R$\$\s]/g, '').replace(',', '.');
-                            const parsedPrice = parseFloat(priceText);
-                            if (!isNaN(parsedPrice)) {
-                                price = parsedPrice;
-                            }
-                        }
-                        
-                        // Extract product URL/ID
-                        const linkElement = card.querySelector('a[href*="/product/"], a[href*="/curso/"]');
-                        let hotmartId = `PROD${Date.now()}${index}`;
-                        let productUrl = `https://hotmart.com/product/${hotmartId}`;
-                        
-                        if (linkElement) {
-                            const href = linkElement.getAttribute('href');
-                            if (href.includes('/product/') || href.includes('/curso/')) {
-                                const idMatch = href.match(/\/(?:product|curso)\/([^\/\?]+)/);
-                                if (idMatch) {
-                                    hotmartId = idMatch[1];
-                                    productUrl = `https://hotmart.com${href}`;
+            // Extract product information with timeout
+            scrapedProducts = await Promise.race([
+                page.evaluate(() => {
+                    const products = [];
+                    const productCards = document.querySelectorAll('[data-testid="product-card"], .product-card, .course-card, .hp-product-card');
+                    
+                    productCards.forEach((card, index) => {
+                        try {
+                            // Extract product title
+                            const titleElement = card.querySelector('h3, .product-title, .course-title, [data-testid="product-title"]');
+                            const title = titleElement ? titleElement.textContent.trim() : `Producto ${index + 1}`;
+                            
+                            // Extract price
+                            const priceElement = card.querySelector('[data-testid="price"], .price, .course-price');
+                            let price = 97.00; // Default price
+                            if (priceElement) {
+                                const priceText = priceElement.textContent.replace(/[R$\$\s]/g, '').replace(',', '.');
+                                const parsedPrice = parseFloat(priceText);
+                                if (!isNaN(parsedPrice)) {
+                                    price = parsedPrice;
                                 }
                             }
+                            
+                            // Extract product URL/ID
+                            const linkElement = card.querySelector('a[href*="/product/"], a[href*="/curso/"]');
+                            let hotmartId = `PROD${Date.now()}${index}`;
+                            let productUrl = `https://hotmart.com/product/${hotmartId}`;
+                            
+                            if (linkElement) {
+                                const href = linkElement.getAttribute('href');
+                                if (href.includes('/product/') || href.includes('/curso/')) {
+                                    const idMatch = href.match(/\/(?:product|curso)\/([^\/\?]+)/);
+                                    if (idMatch) {
+                                        hotmartId = idMatch[1];
+                                        productUrl = `https://hotmart.com${href}`;
+                                    }
+                                }
+                            }
+                            
+                            // Determine niche based on title
+                            const titleLower = title.toLowerCase();
+                            let niche = 'General';
+                            if (titleLower.includes('curso') || titleLower.includes('course')) niche = 'Education';
+                            else if (titleLower.includes('marketing') || titleLower.includes('negócio')) niche = 'Business';
+                            else if (titleLower.includes('saúde') || titleLower.includes('fitness') || titleLower.includes('yoga')) niche = 'Health';
+                            else if (titleLower.includes('beleza') || titleLower.includes('manicure')) niche = 'Beauty';
+                            else if (titleLower.includes('tecnologia') || titleLower.includes('programação')) niche = 'Technology';
+                            else if (titleLower.includes('finanças') || titleLower.includes('investimento')) niche = 'Finance';
+                            
+                            products.push({
+                                hotmart_id: hotmartId,
+                                name: title,
+                                niche: niche,
+                                price: price,
+                                commission_rate: 40, // Default 40% commission
+                                url_sales_page: productUrl
+                            });
+                            
+                        } catch (error) {
+                            console.log(`Error extracting product ${index}:`, error.message);
                         }
-                        
-                        // Determine niche based on title
-                        const titleLower = title.toLowerCase();
-                        let niche = 'General';
-                        if (titleLower.includes('curso') || titleLower.includes('course')) niche = 'Education';
-                        else if (titleLower.includes('marketing') || titleLower.includes('negócio')) niche = 'Business';
-                        else if (titleLower.includes('saúde') || titleLower.includes('fitness') || titleLower.includes('yoga')) niche = 'Health';
-                        else if (titleLower.includes('beleza') || titleLower.includes('manicure')) niche = 'Beauty';
-                        else if (titleLower.includes('tecnologia') || titleLower.includes('programação')) niche = 'Technology';
-                        else if (titleLower.includes('finanças') || titleLower.includes('investimento')) niche = 'Finance';
-                        
-                        products.push({
-                            hotmart_id: hotmartId,
-                            name: title,
-                            niche: niche,
-                            price: price,
-                            commission_rate: 40, // Default 40% commission
-                            url_sales_page: productUrl
-                        });
-                        
-                    } catch (error) {
-                        console.log(`Error extracting product ${index}:`, error.message);
-                    }
-                });
-                
-                return products;
-            });
+                    });
+                    
+                    return products;
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Product extraction timeout')), 15000)
+                )
+            ]);
             
-            await page.close();
-            console.log(`📦 Successfully scraped ${scrapedProducts.length} products from Hotmart`);
+            if (page) await page.close();
+            const scanDuration = Date.now() - scanStartTime;
+            console.log(`📦 Successfully scraped ${scrapedProducts.length} products from Hotmart in ${scanDuration}ms`);
+            
+            // Limit to maxProducts
+            if (scrapedProducts.length > maxProducts) {
+                scrapedProducts = scrapedProducts.slice(0, maxProducts);
+                console.log(`📦 Limited to ${maxProducts} products as requested`);
+            }
             
         } catch (error) {
             console.error('❌ Error scraping Hotmart marketplace:', error.message);
             console.log('🔄 Falling back to expanded mock data...');
+            
+            if (page) {
+                try {
+                    await page.close();
+                } catch (closeError) {
+                    console.error('Error closing page:', closeError.message);
+                }
+            }
             
             // Fallback to expanded mock data with more variety
             scrapedProducts = [

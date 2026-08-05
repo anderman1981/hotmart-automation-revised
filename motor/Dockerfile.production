@@ -1,0 +1,58 @@
+# Multi-stage build for production
+FROM node:20-alpine AS base
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache \
+    git \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-liberation \
+    woff2 \
+    && rm -rf /var/cache/apk/*
+
+# Set Puppeteer to use system Chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Dependencies stage
+FROM base AS deps
+
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Build stage (if build steps are needed)
+FROM base AS build
+COPY package*.json ./
+RUN npm ci
+
+# Production stage
+FROM base AS production
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Copy dependencies
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+
+# Copy application code
+COPY --chown=nodejs:nodejs . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/storage /app/ssl && \
+    chown -R nodejs:nodejs /app
+
+USER nodejs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node health_check.js
+
+EXPOSE 4123
+
+CMD ["node", "index.js"]

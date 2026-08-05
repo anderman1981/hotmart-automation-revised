@@ -1,3 +1,4 @@
+import API_BASE from '../../api';
 import React, { useState, useEffect } from 'react';
 import { Shield, Key, Plus, Trash2, Edit3, Save, X, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,7 +9,7 @@ const SettingsAPI = () => {
 
     const fetchKeys = async () => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/keys`);
+            const res = await fetch(`${API_BASE}/api/settings/keys`);
             const data = await res.json();
             if (data.keys) setKeys(data.keys);
         } catch (e) {
@@ -30,7 +31,7 @@ const SettingsAPI = () => {
         if (!newKey.name || !newKey.key) return toast.error('Name and Key are required');
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/keys`, {
+            const res = await fetch(`${API_BASE}/api/settings/keys`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newKey)
@@ -49,7 +50,7 @@ const SettingsAPI = () => {
 
     const handleDelete = async (id) => {
         try {
-            await fetch(`${import.meta.env.VITE_API_URL}/api/settings/keys/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE}/api/settings/keys/${id}`, { method: 'DELETE' });
             toast.success('API Key deleted from DB');
             fetchKeys();
         } catch (e) {

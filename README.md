@@ -1,5 +1,15 @@
 # 🔥 Hotmart Automation System v1.1.0
 
+![CI Pipeline](https://github.com/anderman1981/hotmart-automation-revised/workflows/CI%20Pipeline/badge.svg)
+![Deploy Pipeline](https://github.com/anderman1981/hotmart-automation-revised/workflows/Deploy%20Pipeline/badge.svg)
+![Security Scan](https://github.com/anderman1981/hotmart-automation-revised/workflows/Security/badge.svg)
+![Code Quality](https://github.com/anderman1981/hotmart-automation-revised/workflows/Code%20Quality/badge.svg)
+![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
+![License](https://img.shields.io/badge/license-private-red.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)
+![React](https://img.shields.io/badge/react-18.2.0-blue.svg)
+![PostgreSQL](https://img.shields.io/badge/postgresql-15-blue.svg)
+
 > **System Status:** ✅ ACTIVE  
 > **Main Branch:** `main`  
 > **Development:** `dev` (sincronizado)  

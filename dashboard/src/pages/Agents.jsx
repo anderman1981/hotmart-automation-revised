@@ -1,3 +1,4 @@
+import API_BASE from '../api';
 import React, { useState, useEffect } from 'react';
 import { Bot, Image, PenTool, Search, Instagram, Terminal, Play, StopCircle, X, Type, Database, Save, FileJson } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,7 +26,7 @@ const Agents = () => {
             const agentMap = { instagram: 'instagram', content: 'content', visual: 'assets', git: 'git' };
             const agentName = agentMap[activeTab] || activeTab;
 
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/${agentName}/knowledge`);
+            const res = await fetch(`${API_BASE}/api/agents/${agentName}/knowledge`);
             const data = await res.json();
 
             if (data.status === 'empty') {
@@ -52,7 +53,7 @@ const Agents = () => {
                 return;
             }
 
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/${agentName}/knowledge`, {
+            const res = await fetch(`${API_BASE}/api/agents/${agentName}/knowledge`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(parsed)
@@ -76,7 +77,7 @@ const Agents = () => {
         setLoading(true);
         addLog(`🚀 Activando ${agentName}...`);
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+            const res = await fetch(`${API_BASE}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

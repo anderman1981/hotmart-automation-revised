@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend API Test</title>
+    <style>
+        body { 
+            font-family: system-ui, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
+        .test { 
+            background: white; 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { border-left: 4px solid #10b981; }
+        .error { border-left: 4px solid #ef4444; }
+        .loading { border-left: 4px solid #f59e0b; }
+        pre { 
+            background: #f3f4f6; 
+            padding: 10px; 
+            border-radius: 4px; 
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Frontend API Connection Test</h1>
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'http://localhost:4123';
+        const results = document.getElementById('results');
+
+        function addTest(title, status, data) {
+            const test = document.createElement('div');
+            test.className = `test ${status}`;
+            test.innerHTML = `
+                <h3>${title}</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            results.appendChild(test);
+        }
+
+        async function runTests() {
+            addTest('Starting API Tests...', 'loading', { message: 'Testing connection to backend...' });
+
+            // Test 1: Health
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                addTest('✅ Health Check', 'success', data);
+            } catch (error) {
+                addTest('❌ Health Check Failed', 'error', { error: error.message });
+                return;
+            }
+
+            // Test 2: Stats
+            try {
+                const response = await fetch(`${API_URL}/api/stats`);
+                const data = await response.json();
+                addTest('✅ Dashboard Stats', 'success', data);
+            } catch (error) {
+                addTest('❌ Dashboard Stats Failed', 'error', { error: error.message });
+            }
+
+            // Test 3: Super-Agents Status
+            try {
+                const response = await fetch(`${API_URL}/api/super-agents/status`);
+                const data = await response.json();
+                addTest('✅ Super-Agents Status', 'success', data);
+            } catch (error) {
+                addTest('❌ Super-Agents Status Failed', 'error', { error: error.message });
+            }
+
+            // Test 4: Products
+            try {
+                const response = await fetch(`${API_URL}/api/products`);
+                const data = await response.json();
+                const productCount = Array.isArray(data) ? data.length : data.products?.length || 0;
+                addTest('✅ Products List', 'success', { 
+                    count: productCount,
+                    data: data 
+                });
+            } catch (error) {
+                addTest('❌ Products List Failed', 'error', { error: error.message });
+            }
+
+            addTest('🎉 Frontend API Test Complete!', 'success', { 
+                message: 'All tests completed. Check results above.',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Run tests when page loads
+        runTests();
+    </script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+import API_BASE from '../api';
 import React, { useState, useEffect, useRef } from 'react';
 import { Package, Clock, TrendingUp, AlertCircle, CheckCircle, Activity, Search, Database, Zap, RefreshCw } from 'lucide-react';
 import ProductCard from './ProductCard';
@@ -23,7 +24,7 @@ const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }
             const random = Math.random().toString(36).substring(7);
             const cacheBuster = `t=${timestamp}&r=${random}&force=${forceRefresh ? 1 : 0}`;
             
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products?${cacheBuster}`, {
+            const response = await fetch(`${API_BASE}/api/products?${cacheBuster}`, {
                 cache: 'no-cache',
                 headers: {
                     'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -76,7 +77,7 @@ const ProductList = ({ isScanning = false, scanProgress = 0, scanResult = null }
             try {
                 // Add random cache-buster
                 const cacheBuster = `t=${Date.now()}&r=${Math.random()}`;
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products?${cacheBuster}`, {
+                const response = await fetch(`${API_BASE}/api/products?${cacheBuster}`, {
                     cache: 'no-cache',
                     headers: {
                         'Cache-Control': 'no-cache',

@@ -1,3 +1,4 @@
+import API_BASE from '../api';
 import React, { useState, useEffect } from 'react';
 import StatsCard from '../components/StatsCard';
 import ProductList from '../components/ProductList';
@@ -58,6 +59,7 @@ const Dashboard = () => {
     const [scanProgress, setScanProgress] = useState(0);
     const [isScanning, setIsScanning] = useState(false);
     const [scanResult, setScanResult] = useState(null);
+    const [superAgentsStatus, setSuperAgentsStatus] = useState(null);
 
     // Handle global scan
     const handleGlobalScan = async () => {
@@ -71,6 +73,13 @@ const Dashboard = () => {
         setIsScanning(true);
         setScanProgress(0);
         
+        // Add timeout and error handling
+        const SCAN_TIMEOUT = 60000; // 60 seconds timeout
+        const MAX_RETRIES = 5; // Maximum retry attempts
+        let retryCount = 0;
+        let scanStartTime = Date.now();
+        let statusCheckInterval = null;
+        
         // Simulate scan progress
         let progress = 0;
         const progressInterval = setInterval(() => {
@@ -80,17 +89,50 @@ const Dashboard = () => {
             if (progress >= 100) {
                 clearInterval(progressInterval);
                 
-                // Check real Super-Agents scan results
+                // Check real Super-Agents scan results with timeout and retry logic
                 const checkScanStatus = async () => {
                     try {
-                        const statusResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/status`);
-                        const statusData = await statusResponse.json();
+                        // Check timeout
+                        if (Date.now() - scanStartTime > SCAN_TIMEOUT) {
+                            console.error('❌ Scan timeout reached');
+                            clearInterval(statusCheckInterval);
+                            setLoadingScan(false);
+                            setIsScanning(false);
+                            setScanProgress(0);
+                            toast.error('❌ Scan timeout. Please try again.', { id: toastId });
+                            return;
+                        }
                         
-                        const superAgentStatus = statusData.agents?.find(a => a.agent_name === 'SuperScraping');
+                        // Check retry limit
+                        if (retryCount >= MAX_RETRIES) {
+                            console.error('❌ Max retries reached');
+                            clearInterval(statusCheckInterval);
+                            setLoadingScan(false);
+                            setIsScanning(false);
+                            setScanProgress(0);
+                            toast.error('❌ Max retries reached. Please try again.', { id: toastId });
+                            return;
+                        }
                         
-                        if (superAgentStatus?.status === 'inactive' && superAgentStatus.current_task?.includes('completed')) {
+                        console.log(`🔍 Checking scan status (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+                        
+                        // Use the correct endpoint
+                        const freshSuperAgentsStatus = await fetch(`${API_BASE}/api/super-agents/status`).then(r => r.json());
+                        setSuperAgentsStatus(freshSuperAgentsStatus);
+                        
+                        // Check if scan is actually completed
+                        const isCompleted = freshSuperAgentsStatus?.chain_status === 'completed' || 
+                                         freshSuperAgentsStatus?.last_global_scan?.current_task === 'completed' ||
+                                         (freshSuperAgentsStatus && scanProgress >= 100);
+                        
+                        console.log(`📊 Scan status: ${isCompleted ? 'COMPLETED' : 'IN_PROGRESS'}`);
+                        
+                        if (isCompleted) {
+                            clearInterval(statusCheckInterval);
+                            console.log('✅ Scan completed successfully');
+                            
                             // Get updated products
-                            fetch(`${import.meta.env.VITE_API_URL}/api/products`)
+                            fetch(`${API_BASE}/api/products`)
                                 .then(res => res.json())
                                 .then(productsData => {
                                     const currentProducts = Array.isArray(productsData) ? productsData : productsData.products || [];
@@ -135,18 +177,25 @@ const Dashboard = () => {
                                 })
                                 .catch(err => {
                                     console.error('Error getting products:', err);
+                                    clearInterval(statusCheckInterval);
                                     setLoadingScan(false);
                                     setIsScanning(false);
                                     setScanProgress(0);
                                     toast.error('❌ Error loading products. Please try again.', { id: toastId });
                                 });
                         } else {
-                            // Continue checking
-                            setTimeout(checkScanStatus, 3000);
+                            // Continue checking with exponential backoff
+                            retryCount++;
+                            const backoffDelay = Math.min(3000 * Math.pow(1.5, retryCount - 1), 10000); // Max 10 seconds
+                            console.log(`⏳ Retrying in ${backoffDelay}ms...`);
+                            statusCheckInterval = setTimeout(checkScanStatus, backoffDelay);
                         }
                     } catch (error) {
                         console.error('Error checking scan status:', error);
-                        setTimeout(checkScanStatus, 3000);
+                        retryCount++;
+                        const backoffDelay = Math.min(3000 * Math.pow(1.5, retryCount - 1), 10000);
+                        console.log(`❌ Error, retrying in ${backoffDelay}ms...`);
+                        statusCheckInterval = setTimeout(checkScanStatus, backoffDelay);
                     }
                 };
                 
@@ -154,12 +203,20 @@ const Dashboard = () => {
                 setTimeout(checkScanStatus, 2000);
             }
         }, 800);
+        
+        // Add cleanup function
+        return () => {
+            clearInterval(progressInterval);
+            if (statusCheckInterval) {
+                clearTimeout(statusCheckInterval);
+            }
+        };
     };
 
     const fetchStats = async () => {
         try {
             console.log('📊 Fetching stats from API...');
-            const res = await fetch(import.meta.env.VITE_API_URL + '/api/stats');
+            const res = await fetch(API_BASE + '/api/stats');
             
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -193,10 +250,29 @@ const Dashboard = () => {
         }
     };
 
+    const fetchSuperAgentsStatus = async () => {
+        try {
+            console.log('🤖 Fetching Super-Agents status...');
+            const res = await fetch(API_BASE + '/api/super-agents/status');
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            
+            const data = await res.json();
+            console.log('✅ Super-Agents status received:', data);
+            
+            setSuperAgentsStatus(data);
+        } catch (e) {
+            console.error('❌ Failed to fetch Super-Agents status:', e);
+            setSuperAgentsStatus(null);
+        }
+    };
+
     // Check if backend is available before fetching
     const checkBackendAvailability = async () => {
         try {
-            const response = await fetch(import.meta.env.VITE_API_URL + '/health', {
+            const response = await fetch(API_BASE + '/health', {
                 method: 'GET',
                 timeout: 3000
             });
@@ -212,6 +288,7 @@ const Dashboard = () => {
             const isBackendAvailable = await checkBackendAvailability();
             if (isBackendAvailable) {
                 await fetchStats();
+                await fetchSuperAgentsStatus();
             } else {
                 console.log('Backend not available, using fallback data');
             }
@@ -221,8 +298,12 @@ const Dashboard = () => {
         
         // Set up periodic stats refresh
         const statsInterval = setInterval(fetchStats, 30000); // Every 30 seconds
+        const agentsInterval = setInterval(fetchSuperAgentsStatus, 30000); // Every 30 seconds
         
-        return () => clearInterval(statsInterval);
+        return () => {
+            clearInterval(statsInterval);
+            clearInterval(agentsInterval);
+        };
     }, []);
 
     // Initialize learning stats
@@ -440,6 +521,35 @@ const Dashboard = () => {
                             <span className="text-gray-400">Uptime</span>
                             <span className="text-white font-medium">24h</span>
                         </div>
+                        {superAgentsStatus && (
+                            <div className="pt-2 border-t border-white/10">
+                                <span className="text-gray-400 text-xs">Super-Agents</span>
+                                <div className="flex gap-1 mt-1">
+                                    {superAgentsStatus.super_agents?.map((agent, index) => (
+                                        <div
+                                            key={index}
+                                            className={`w-2 h-2 rounded-full ${
+                                                agent.status === 'active' ? 'bg-emerald-500' :
+                                                agent.status === 'ready' ? 'bg-blue-500' :
+                                                agent.status === 'monitoring' ? 'bg-purple-500' :
+                                                'bg-gray-500'
+                                            }`}
+                                            title={`${agent.name}: ${agent.status}`}
+                                        />
+                                    ))}
+                                </div>
+                                {superAgentsStatus.llm_status && (
+                                    <div className="flex justify-between items-center mt-2">
+                                        <span className="text-gray-400 text-xs">LLM</span>
+                                        <span className={`text-xs font-medium ${
+                                            superAgentsStatus.llm_status === 'active' ? 'text-emerald-400' : 'text-red-400'
+                                        }`}>
+                                            {superAgentsStatus.llm_status}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </motion.div>
 
@@ -524,6 +634,63 @@ const Dashboard = () => {
                     View All Products →
                 </button>
             </motion.div>
+
+            {/* Super-Agents Status */}
+            {superAgentsStatus && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.9 }}
+                    className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6"
+                >
+                    <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                        <Zap className="h-5 w-5 text-purple-500" />
+                        Super-Agents Status
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {superAgentsStatus.super_agents?.map((agent, index) => (
+                            <div key={index} className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/50">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-white font-medium text-sm">{agent.name}</h4>
+                                    <div className={`w-2 h-2 rounded-full ${
+                                        agent.status === 'active' ? 'bg-emerald-500' :
+                                        agent.status === 'ready' ? 'bg-blue-500' :
+                                        agent.status === 'monitoring' ? 'bg-purple-500' :
+                                        'bg-gray-500'
+                                    }`} />
+                                </div>
+                                <p className="text-slate-400 text-xs mb-2">{agent.description}</p>
+                                <div className="flex flex-wrap gap-1">
+                                    {agent.capabilities?.slice(0, 2).map((cap, capIndex) => (
+                                        <span key={capIndex} className="text-[9px] bg-slate-800 text-slate-300 px-2 py-1 rounded">
+                                            {cap.replace('_', ' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    {superAgentsStatus.llm_status && (
+                        <div className="mt-4 pt-4 border-t border-slate-700/50">
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-400 text-sm">LLM Status</span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-sm font-medium ${
+                                        superAgentsStatus.llm_status === 'active' ? 'text-emerald-400' : 'text-red-400'
+                                    }`}>
+                                        {superAgentsStatus.llm_status}
+                                    </span>
+                                    {superAgentsStatus.llm_models?.length > 0 && (
+                                        <span className="text-xs text-slate-500">
+                                            ({superAgentsStatus.llm_models.length} models)
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </motion.div>
+            )}
 
             {/* Scan Modal */}
             <AnimatePresence>

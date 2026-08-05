@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env.local
+.env.production
 .DS_Store
 dist/
 .output/
@@ -11,3 +12,16 @@ data/
 models/
 errors/
 templates/
+
+# Security
+*.pem
+*.key
+*.cert
+cert.pem
+
+# Legacy code
+motor/legacy/
+dashboard/src/legacy/
+
+# Audit reports (sensitive)
+*-audit-report.html

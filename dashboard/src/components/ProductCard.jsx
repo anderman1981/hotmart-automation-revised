@@ -1,3 +1,4 @@
+import API_BASE from '../api';
 import React, { useState } from 'react';
 import { 
   TrendingUp, 
@@ -386,7 +387,7 @@ const ProductCard = ({ product, onClick, isSelected }) => {
                   e.stopPropagation();
                   try {
                     // Subscribe to affiliate program
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/affiliate/subscribe`, {
+                    const response = await fetch(`${API_BASE}/api/affiliate/subscribe`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ 

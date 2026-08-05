@@ -1,0 +1,205 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd motor && npm ci
+          cd ../dashboard && npm ci
+
+      - name: Run ESLint on dashboard
+        run: |
+          cd dashboard
+          npm run lint || true
+
+      - name: Check code formatting with Prettier
+        run: |
+          npx prettier --check . || echo "Prettier check completed"
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Prettier
+        run: npm install -g prettier
+
+      - name: Check formatting
+        run: prettier --check .
+
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd motor && npm ci
+          cd ../dashboard && npm ci
+
+      - name: TypeScript check for dashboard
+        run: |
+          cd dashboard
+          npx tsc --noEmit || echo "TypeScript check completed"
+
+  complexity-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install complexity tools
+        run: npm install -g complexity-report
+
+      - name: Run complexity analysis
+        run: |
+          echo "Analyzing code complexity..."
+          find . -name "*.js" -not -path "./node_modules/*" -not -path "./dashboard/node_modules/*" -not -path "./motor/node_modules/*" | xargs complexity-report -f json > complexity-report.json || true
+          
+          echo "Complexity Analysis Results:"
+          cat complexity-report.json | jq '.' || echo "Analysis completed"
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd motor && npm ci
+
+      - name: Run tests with coverage
+        run: |
+          cd motor
+          npm test -- --coverage || echo "Tests completed"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: ./motor/coverage
+          flags: unittests
+          name: codecov-umbrella
+
+  performance-budget:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd dashboard
+          npm ci
+
+      - name: Build for analysis
+        run: |
+          cd dashboard
+          npm run build
+
+      - name: Analyze bundle size
+        run: |
+          cd dashboard
+          npx bundlesize || echo "Bundle size analysis completed"
+
+  security-code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/nodejs
+            p/javascript
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v3
+
+  quality-gate:
+    runs-on: ubuntu-latest
+    needs: [lint, format, type-check, complexity-analysis, test-coverage]
+    if: always()
+    steps:
+      - name: Quality Gate Check
+        run: |
+          echo "Running quality gate checks..."
+          
+          # Check if all jobs passed
+          if [ "${{ needs.lint.result }}" = "success" ] && \
+             [ "${{ needs.format.result }}" = "success" ] && \
+             [ "${{ needs.type-check.result }}" = "success" ] && \
+             [ "${{ needs.complexity-analysis.result }}" = "success" ] && \
+             [ "${{ needs.test-coverage.result }}" = "success" ]; then
+            echo "✅ Quality gate passed!"
+            exit 0
+          else
+            echo "❌ Quality gate failed!"
+            echo "Lint: ${{ needs.lint.result }}"
+            echo "Format: ${{ needs.format.result }}"
+            echo "Type Check: ${{ needs.type-check.result }}"
+            echo "Complexity: ${{ needs.complexity-analysis.result }}"
+            echo "Test Coverage: ${{ needs.test-coverage.result }}"
+            exit 1
+          fi

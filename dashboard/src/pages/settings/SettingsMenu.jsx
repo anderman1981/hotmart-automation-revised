@@ -1,3 +1,4 @@
+import API_BASE from '../../api';
 import React, { useState, useEffect } from 'react';
 import { Menu, Grid, Plus, Trash2, Edit3, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,7 +11,7 @@ const SettingsMenu = () => {
 
     const fetchMenu = async () => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/menu`);
+            const res = await fetch(`${API_BASE}/api/settings/menu`);
             const data = await res.json();
             if (data.menu) setMenuItems(data.menu);
         } catch (e) {
@@ -30,7 +31,7 @@ const SettingsMenu = () => {
             path: formData.path
         };
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/menu`, {
+            const res = await fetch(`${API_BASE}/api/settings/menu`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newItem)
@@ -53,7 +54,7 @@ const SettingsMenu = () => {
 
     const handleUpdate = async () => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/menu`, {
+            const res = await fetch(`${API_BASE}/api/settings/menu`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -71,7 +72,7 @@ const SettingsMenu = () => {
 
     const handleDelete = async (id) => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/menu/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_BASE}/api/settings/menu/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 toast.success('Menu item removed from DB');
                 fetchMenu();

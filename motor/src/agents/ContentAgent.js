@@ -27,14 +27,30 @@ class ContentAgent {
 
         try {
             console.log(`📝 Content Agent: Generating copy for ${productName}...`);
-            const response = await this.ollama.chat({
-                model: this.model,
-                messages: [{ role: 'user', content: prompt }],
-            });
+            const LLM_TIMEOUT = 10000; // 10 seconds timeout
+            
+            const response = await Promise.race([
+                this.ollama.chat({
+                    model: this.model,
+                    messages: [{ role: 'user', content: prompt }],
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('LLM content generation timeout')), LLM_TIMEOUT)
+                )
+            ]);
+            
             return response.message.content;
         } catch (error) {
             console.error('❌ Content Gen Error:', error);
-            return "Error generando contenido.";
+            // Return fallback content instead of error message
+            return `🚀 ¡Transforma tu ${niche.toLowerCase()} con "${productName}"! ✨
+
+¿Listo/a para cambiar tu vida? 💪
+Este producto es lo que necesitas.
+
+👉 Link en bio para empezar hoy!
+
+#Transformación #Éxito #${niche.replace(/\s+/g, '')}`;
         }
     }
 

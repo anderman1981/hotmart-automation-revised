@@ -1,9 +1,39 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
 import pg from 'pg';
-import puppeteer from 'puppeteer-core';
 const { Pool } = pg;
+
+// Import security middleware
+import {
+    securityHeaders,
+    authRateLimit,
+    generalRateLimit,
+    uploadRateLimit,
+    contentGenerationRateLimit,
+    validateRequest,
+    validateApiKey,
+    validateCors,
+    validationRules,
+    securityErrorHandler,
+    logSecurityEvent,
+    sanitizeSqlInput,
+    sanitizeHtml,
+    validateFileUpload,
+    requestId
+} from './middleware/security.js';
+
+import {
+    validateEnvironment,
+    secureConfig,
+    auditSecurity
+} from './config/security.js';
+
+// Run security audit on startup
+if (process.env.NODE_ENV !== 'test') {
+    auditSecurity();
+    validateEnvironment();
+    secureConfig.ensureEncryptionKey();
+}
 // Redis connection (optional for basic functionality)
 let redisClient = null;
 
@@ -39,9 +69,37 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Structured logger (replaces console.log)
+const logger = {
+    info: (msg, data) => console.log(JSON.stringify({ level: 'info', msg, ...data, ts: new Date().toISOString() })),
+    warn: (msg, data) => console.warn(JSON.stringify({ level: 'warn', msg, ...data, ts: new Date().toISOString() })),
+    error: (msg, data) => console.error(JSON.stringify({ level: 'error', msg, ...data, ts: new Date().toISOString() }))
+};
+
+// Security middleware
+app.use(requestId);
+app.use(securityHeaders);
+app.use(validateCors);
+app.use(express.json({ limit: '10mb' }));
+app.use(generalRateLimit);
+
+// Error handling middleware
+app.use(securityErrorHandler);
+
+// Health check endpoint (simple, lightweight)
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Security: Block suspicious user agents
+app.use((req, res, next) => {
+    const ua = req.get('User-Agent') || '';
+    if (ua.length > 500 || /sqlmap|nikto|masscan|nmap/i.test(ua)) {
+        logSecurityEvent('SUSPICIOUS_UA', { ua: ua.substring(0, 100) }, req);
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    next();
+});
 
 // DB Connection
 const pool = new Pool({
@@ -49,7 +107,7 @@ const pool = new Pool({
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
-  port: 5432,
+  port: parseInt(process.env.DB_PORT || '5432'),
 });
 
         // Global System State
@@ -76,7 +134,7 @@ app.post('/api/agents/:agent/knowledge', (req, res) => {
     
     try {
         fs.writeFileSync(filePath, JSON.stringify(knowledgeData, null, 2));
-        console.log(`🧠 Knowledge Base updated for ${agentName}`);
+    logger.info('Knowledge Base updated', { agent: agentName });
         
         // Optional: Trigger agent reload or notify agent
         if (agentName === 'git' && gitAgent) {
@@ -110,15 +168,14 @@ app.get('/api/agents/:agent/knowledge', (req, res) => {
 // --- Agent Management Endpoints ---
 app.post('/api/system/start', (req, res) => {
     SYSTEM_ACTIVE = true;
-    // Logic to restart agents could go here
-    console.log('🟢 SYSTEM STARTED');
+    logger.info('System Started', { action: 'start' });
     gitAgent.updateWiki('CORE', 'System Start', 'Manually started via API');
     res.json({ status: 'success', msg: 'System Started' });
 });
 
 app.post('/api/system/stop', async (req, res) => {
     SYSTEM_ACTIVE = false;
-    console.log('🔴 SYSTEM STOPPED');
+    logger.info('System Stopped', { action: 'stop' });
     // Stop all agents
     try {
         await Promise.all([
@@ -136,22 +193,36 @@ app.post('/api/system/stop', async (req, res) => {
 import bayesianEngine from './BayesianEngine/index.js';
 
 // Ingest product for initial tracking
-app.post('/api/products', async (req, res) => {
+app.post('/api/products', 
+    generalRateLimit,
+    validationRules.createProduct,
+    validateRequest,
+    async (req, res) => {
   const { hotmart_id, name, niche, url_sales_page } = req.body;
+  
+  // Sanitize inputs
+  const sanitizedHotmartId = sanitizeSqlInput(hotmart_id);
+  const sanitizedName = sanitizeHtml(name);
+  const sanitizedNiche = niche ? sanitizeSqlInput(niche) : null;
+  const sanitizedUrl = url_sales_page ? sanitizeSqlInput(url_sales_page) : null;
+  
   try {
     const result = await pool.query(
       `INSERT INTO products (hotmart_id, name, niche, url_sales_page) 
        VALUES ($1, $2, $3, $4) RETURNING id`,
-      [hotmart_id, name, niche, url_sales_page]
+      [sanitizedHotmartId, sanitizedName, sanitizedNiche, sanitizedUrl]
     );
     // Init score
     await pool.query(
       `INSERT INTO product_scores (product_id) VALUES ($1)`,
       [result.rows[0].id]
     );
-    gitAgent.updateWiki('MARKET', 'Product Tracked', `New product: ${name} (${hotmart_id})`);
+    
+    logSecurityEvent('PRODUCT_CREATED', { hotmartId: sanitizedHotmartId, name: sanitizedName }, req);
+    gitAgent.updateWiki('MARKET', 'Product Tracked', `New product: ${sanitizedName} (${sanitizedHotmartId})`);
     res.status(201).json({ id: result.rows[0].id, msg: 'Product tracked' });
   } catch (err) {
+    logSecurityEvent('PRODUCT_CREATE_ERROR', { error: err.message }, req);
     res.status(500).json({ error: err.message });
   }
 });
@@ -184,18 +255,25 @@ app.get('/api/products', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
 // --- ADMIN PRODUCTS MANAGEMENT ---
 
 // DELETE all products and reset metrics
-app.delete('/api/admin/products', async (req, res) => {
+app.delete('/api/admin/products', 
+    authRateLimit,
+    validateApiKey,
+    async (req, res) => {
     try {
         await pool.query('DELETE FROM affiliate_metrics');
         await pool.query('DELETE FROM daily_metrics');
         await pool.query('DELETE FROM products');
         
+        logSecurityEvent('ADMIN_PRODUCTS_DELETED', { action: 'delete_all' }, req);
         gitAgent.updateWiki('ADMIN', 'System Reset', 'Deleted all products and reset metrics');
         res.json({ status: 'success', msg: 'All products and metrics deleted successfully' });
     } catch (err) {
+        logSecurityEvent('ADMIN_DELETE_ERROR', { error: err.message }, req);
         res.status(500).json({ error: err.message });
     }
 });
@@ -365,8 +443,6 @@ app.post('/api/admin/products/populate', async (req, res) => {
 // --- Dashboard Stats API ---
 app.get('/api/stats', async (req, res) => {
     try {
-        console.log('📊 Fetching dashboard stats...');
-        
         // Products metrics
         const productsCount = await pool.query('SELECT COUNT(*) FROM products');
         const selectedProducts = await pool.query('SELECT COUNT(*) FROM products WHERE selected_for_tracking = TRUE');
@@ -424,7 +500,7 @@ app.get('/api/stats', async (req, res) => {
             system_active: SYSTEM_ACTIVE
         };
 
-        console.log('✅ Stats fetched successfully:', statsData);
+        logger.info('Stats fetched successfully', { activeAgents: activeAgents, products: parseInt(productsCount.rows[0].count) });
         res.json(statsData);
         
     } catch (e) {
@@ -451,16 +527,43 @@ app.get('/api/stats', async (req, res) => {
 // --- Super-Agents Status API ---
 app.get('/api/super-agents/status', async (req, res) => {
     try {
-        console.log('🤖 Fetching Super-Agents status...');
+        // Get real scan status from database
+        const lastScanStatus = await getLastGlobalScanStatus();
+        
+        // Check if scan is stuck (running for more than 3 minutes)
+        let chain_status = 'operational';
+        let scanIsStuck = false;
+        
+        if (lastScanStatus && lastScanStatus.current_task === 'active') {
+            const lastActivity = new Date(lastScanStatus.last_activity);
+            const timeSinceLastActivity = Date.now() - lastActivity.getTime();
+            
+            if (timeSinceLastActivity > 180000) { // 3 minutes
+                chain_status = 'stuck';
+                scanIsStuck = true;
+                console.warn(`⚠️ Scan appears stuck (running for ${Math.floor(timeSinceLastActivity/1000)}s)`);
+                
+                // Auto-cleanup stuck scans
+                if (timeSinceLastActivity > 300000) { // 5 minutes
+                    await cleanupZombieScans();
+                }
+            } else {
+                chain_status = 'scanning';
+            }
+        }
         
         // Check Super-Agents chain status
         const superAgents = [
             {
                 name: 'SuperScrapingAgent',
-                status: 'active',
-                description: 'Inteligent scraping with LLM analysis',
+                status: lastScanStatus?.current_task === 'active' && !scanIsStuck ? 'scanning' : 
+                       lastScanStatus?.current_task === 'error' ? 'error' : 'ready',
+                description: 'Intelligent scraping with LLM analysis',
                 capabilities: ['market_scraping', 'viability_analysis', 'affiliate_decisions'],
-                last_update: new Date().toISOString()
+                last_update: lastScanStatus?.last_activity || new Date().toISOString(),
+                current_task: lastScanStatus?.current_task || 'idle',
+                task_duration: lastScanStatus?.last_activity ? 
+                    Math.floor((Date.now() - new Date(lastScanStatus.last_activity).getTime()) / 1000) : 0
             },
             {
                 name: 'SuperContentAgent', 
@@ -478,10 +581,18 @@ app.get('/api/super-agents/status', async (req, res) => {
             }
         ];
         
-        // Check Ollama LLM status
+        // Check Ollama LLM status with timeout
         let llmStatus = 'unknown';
+        let llmModels = [];
         try {
-            const ollamaResponse = await fetch('http://localhost:11434/api/tags');
+            const ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
+            const ollamaResponse = await Promise.race([
+                fetch(`${ollamaHost}/api/tags`),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('LLM check timeout')), 5000)
+                )
+            ]);
+            
             if (ollamaResponse.ok) {
                 const ollamaData = await ollamaResponse.json();
                 llmStatus = 'active';
@@ -490,19 +601,29 @@ app.get('/api/super-agents/status', async (req, res) => {
         } catch (error) {
             llmStatus = 'inactive';
             llmModels = [];
+            console.warn('⚠️ LLM status check failed:', error.message);
         }
         
         res.json({
             super_agents: superAgents,
             llm_status: llmStatus,
-            llm_models: llmModels || [],
-            chain_status: 'operational',
-            last_global_scan: await getLastGlobalScanStatus()
+            llm_models: llmModels,
+            chain_status: chain_status,
+            last_global_scan: lastScanStatus,
+            system_health: {
+                scan_stuck: scanIsStuck,
+                cleanup_needed: scanIsStuck && lastScanStatus?.last_activity,
+                timestamp: new Date().toISOString()
+            }
         });
         
     } catch (e) {
         console.error('Error fetching Super-Agents status:', e);
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ 
+            error: e.message,
+            chain_status: 'error',
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
@@ -536,21 +657,34 @@ app.get('/api/agents/status', async (req, res) => {
 });
 
 // --- Content Generation API ---
-app.post('/api/content', async (req, res) => {
+app.post('/api/content', 
+    contentGenerationRateLimit,
+    validationRules.generateContent,
+    validateRequest,
+    async (req, res) => {
     const { content_type, title, content, platform, agent_name, product_id } = req.body;
+    
+    // Sanitize inputs
+    const sanitizedTitle = sanitizeHtml(title);
+    const sanitizedContent = sanitizeHtml(content);
+    const sanitizedPlatform = platform ? sanitizeSqlInput(platform) : null;
+    const sanitizedAgentName = agent_name ? sanitizeSqlInput(agent_name) : null;
+    
     try {
         const result = await pool.query(`
             INSERT INTO generated_content (content_type, title, content, platform, agent_name, product_id, status)
             VALUES ($1, $2, $3, $4, $5, $6, 'draft')
             RETURNING id, created_at
-        `, [content_type, title, content, platform, agent_name, product_id]);
+        `, [content_type, sanitizedTitle, sanitizedContent, sanitizedPlatform, sanitizedAgentName, product_id]);
         
         // Update agent activity
         await pool.query('SELECT update_agent_activity($1, $2, $3)', 
-            [agent_name, 'active', `Generated ${content_type}: ${title}`]);
+            [sanitizedAgentName, 'active', `Generated ${content_type}: ${sanitizedTitle}`]);
             
+        logSecurityEvent('CONTENT_GENERATED', { contentType: content_type, title: sanitizedTitle }, req);
         res.json({ success: true, content: result.rows[0] });
     } catch (e) {
+        logSecurityEvent('CONTENT_GENERATE_ERROR', { error: e.message }, req);
         res.status(500).json({ error: e.message });
     }
 });
@@ -627,7 +761,7 @@ app.post('/api/metrics', async (req, res) => {
 });
 
 // Import agents
-const { default: detectorAgent } = await import('./src/agents/DetectorAgent.js');
+const detectorAgent = require('./src/agents/DetectorAgent.js');
 const { default: instagramAgent } = await import('./src/agents/InstagramAgent.js');
 const { default: contentAgent } = await import('./src/agents/ContentAgent.js');
 const { default: assetsAgent } = await import('./src/agents/AssetsAgent.js');
@@ -637,13 +771,26 @@ const { default: managerAgent } = await import('./src/agents/ManagerAgent.js');
 const { default: affiliateAgent } = await import('./src/agents/AffiliateAgent.js');
 
 // Init Agents
+// Init Agents
 (async () => {
     try {
+        console.log('🔄 Initializing All Agents...');
         await gitAgent.init();
-        await learningAgent.init(); // Re-enabled after fix
-        console.log('✅ Agents Initialized');
+        await learningAgent.init(); 
+        
+        // Activate Manager Agent
+        if (managerAgent.init) await managerAgent.init();
+        
+        // Activate Instagram Agent (Background)
+        instagramAgent.init().then(() => {
+             console.log('📸 Instagram Agent Initialized');
+        }).catch(err => {
+             console.warn('⚠️ Instagram Agent Init Failed (Check Creds):', err.message);
+        });
+
+        console.log('✅ Core Agents Initialized & System Active');
     } catch (e) {
-        console.error('⚠️ Agent Init Warning:', e.message);
+        console.error('⚠️ Agent Init Critical Warning:', e.message);
     }
 })();
 
@@ -654,10 +801,10 @@ app.post('/api/agents/content/generate', async (req, res) => {
     const { productName, niche } = req.body;
     try {
         // Run sequentially to save resources
-        console.log('📝 Content Agent: Starting Text Gen...');
+        logger.info('Content Agent: Starting generation', { productName });
         const copy = await contentAgent.generateMarketingPost(productName, niche);
         
-        console.log('🎨 Content Agent: Starting Prompt Gen...');
+        logger.info('Content Agent: Starting Prompt Gen', { productName });
         const prompt = await contentAgent.generateImagePrompt(productName, niche);
         
         // Save to DB logic would go here
@@ -669,26 +816,43 @@ app.post('/api/agents/content/generate', async (req, res) => {
 });
 
 // Trigger Asset Scraping
-app.post('/api/agents/assets/scan', async (req, res) => {
+app.post('/api/agents/assets/scan', 
+    contentGenerationRateLimit,
+    validationRules.scrapingUrl,
+    validateRequest,
+    async (req, res) => {
     const { productUrl } = req.body;
+    const sanitizedUrl = sanitizeSqlInput(productUrl);
+    
     try {
-        const assets = await assetsAgent.findAffiliateMaterials(productUrl);
+        const assets = await assetsAgent.findAffiliateMaterials(sanitizedUrl);
+        logSecurityEvent('ASSET_SCAN', { url: sanitizedUrl, assetCount: assets.length }, req);
         res.json({ status: 'scanned', assets });
     } catch (e) {
+        logSecurityEvent('ASSET_SCAN_ERROR', { url: sanitizedUrl, error: e.message }, req);
         res.status(500).json({ error: e.message });
     }
 });
 
 // Trigger Detector Inspect (Specific URL)
-app.post('/api/agents/detector/inspect', async (req, res) => {
+app.post('/api/agents/detector/inspect', 
+    contentGenerationRateLimit,
+    validationRules.scrapingUrl,
+    validateRequest,
+    async (req, res) => {
     const { url } = req.body;
+    const sanitizedUrl = sanitizeSqlInput(url);
+    
     try {
         // Run in background (async)
-        detectorAgent.inspectDetails(url).then(details => {
+        detectorAgent.inspectDetails(sanitizedUrl).then(details => {
              console.log('Inspection Complete:', details);
+             logSecurityEvent('INSPECTION_COMPLETED', { url: sanitizedUrl }, req);
         });
+        logSecurityEvent('INSPECTION_STARTED', { url: sanitizedUrl }, req);
         res.json({ status: 'inspecting', msg: 'Analizando página interna del producto...' });
     } catch (e) {
+        logSecurityEvent('INSPECTION_ERROR', { url: sanitizedUrl, error: e.message }, req);
         res.status(500).json({ error: e.message });
     }
 });
@@ -724,16 +888,25 @@ app.get('/api/git/status', async (req, res) => {
 // --- SETTINGS & DATA API ---
 
 // Start Specific Agent
-app.post('/api/agents/:name/start', async (req, res) => {
+app.post('/api/agents/:name/start', 
+    authRateLimit,
+    validationRules.agentName,
+    validateRequest,
+    validateApiKey,
+    async (req, res) => {
     const { name } = req.params;
+    const sanitizedName = sanitizeSqlInput(name);
+    
     try {
-        const result = await managerAgent.wakeAgent(name);
+        const result = await managerAgent.wakeAgent(sanitizedName);
         if (result) {
-            res.json({ status: 'success', msg: `Agent ${name} wake signal sent.` });
+            logSecurityEvent('AGENT_STARTED', { agentName: sanitizedName }, req);
+            res.json({ status: 'success', msg: `Agent ${sanitizedName} wake signal sent.` });
         } else {
             res.status(400).json({ status: 'failed', error: 'Agent could not be woken or does not support auto-wake.' });
         }
     } catch (e) {
+        logSecurityEvent('AGENT_START_ERROR', { agentName: sanitizedName, error: e.message }, req);
         res.status(500).json({ error: e.message });
     }
 });
@@ -741,7 +914,7 @@ app.post('/api/agents/:name/start', async (req, res) => {
 // Manager Agent: Summarize Latest Knowledge
 app.get('/api/agents/manager/summarize', async (req, res) => {
     try {
-        console.log('🧠 API: Requesting Manager Agent to summarize latest knowledge...');
+        logger.info('Manager API: Summarize knowledge');
         const summary = await managerAgent.summarizeLatestKnowledge();
         res.json({ status: 'success', summary });
     } catch (e) {
@@ -791,35 +964,83 @@ app.delete('/api/settings/menu/:id', async (req, res) => {
 });
 
 // API Keys Management
-app.get('/api/settings/keys', async (req, res) => {
+app.get('/api/settings/keys', 
+    validateApiKey,
+    async (req, res) => {
     try {
         const result = await pool.query('SELECT id, name, platform, encrypted_key as key, is_active FROM api_keys ORDER BY created_at DESC');
-        res.json({ keys: result.rows });
+        // Mask keys in response
+        const maskedKeys = result.rows.map(key => ({
+            ...key,
+            key: key.key ? key.key.substring(0, 8) + '...' : null
+        }));
+        res.json({ keys: maskedKeys });
     } catch (e) {
+        logSecurityEvent('API_KEYS_FETCH_ERROR', { error: e.message }, req);
         res.status(500).json({ error: e.message });
     }
 });
 
-app.post('/api/settings/keys', async (req, res) => {
+app.post('/api/settings/keys', 
+    authRateLimit,
+    validateApiKey,
+    async (req, res) => {
     const { name, platform, key } = req.body;
+    
+    // Validate inputs
+    if (!name || !platform || !key) {
+        return res.status(400).json({ error: 'Name, platform, and key are required' });
+    }
+    
+    if (name.length > 100 || platform.length > 50) {
+        return res.status(400).json({ error: 'Name too long (max 100 chars) or platform too long (max 50 chars)' });
+    }
+    
+    const sanitizedName = sanitizeSqlInput(name);
+    const sanitizedPlatform = sanitizeSqlInput(platform);
+    
     try {
         const result = await pool.query(
             'INSERT INTO api_keys (name, platform, encrypted_key) VALUES ($1, $2, $3) RETURNING id',
-            [name, platform, key]
+            [sanitizedName, sanitizedPlatform, key]
         );
-        gitAgent.updateWiki('SECURITY', 'API Key Added', `Registered key for ${platform}`);
+        
+        logSecurityEvent('API_KEY_ADDED', { 
+            platform: sanitizedPlatform, 
+            name: sanitizedName,
+            id: result.rows[0].id 
+        }, req);
+        
+        gitAgent.updateWiki('SECURITY', 'API Key Added', `Registered key for ${sanitizedPlatform}`);
         res.json({ status: 'success', id: result.rows[0].id });
     } catch (e) {
+        logSecurityEvent('API_KEY_ADD_ERROR', { 
+            platform: sanitizedPlatform,
+            error: e.message 
+        }, req);
         res.status(500).json({ error: e.message });
     }
 });
 
-app.delete('/api/settings/keys/:id', async (req, res) => {
+app.delete('/api/settings/keys/:id', 
+    authRateLimit,
+    validateApiKey,
+    validationRules.idParam,
+    validateRequest,
+    async (req, res) => {
     try {
-        await pool.query('DELETE FROM api_keys WHERE id = $1', [req.params.id]);
-        gitAgent.updateWiki('SECURITY', 'API Key Deleted', `Removed API key ID: ${req.params.id}`);
+        const keyId = parseInt(req.params.id);
+        await pool.query('DELETE FROM api_keys WHERE id = $1', [keyId]);
+        
+        logSecurityEvent('API_KEY_DELETED', { id: keyId }, req);
+        
+        gitAgent.updateWiki('SECURITY', 'API Key Deleted', `Removed API key ID: ${keyId}`);
         res.json({ status: 'success' });
     } catch (e) {
+        logSecurityEvent('API_KEY_DELETE_ERROR', { 
+            id: req.params.id,
+            error: e.message 
+        }, req);
         res.status(500).json({ error: e.message });
     }
 });
@@ -859,16 +1080,36 @@ app.delete('/api/settings/sources/:id', async (req, res) => {
 });
 
 // Data Ingestion Endpoint (Supports Links, Text, and PDF)
-app.post('/api/ingest', async (req, res) => {
+app.post('/api/ingest', 
+    uploadRateLimit,
+    async (req, res) => {
     const contentType = req.headers['content-type'] || '';
 
     if (contentType.includes('multipart/form-data')) {
-        const form = new multiparty.Form();
+        const form = new multiparty.Form({
+            maxFiles: 1,
+            maxFileSize: 10 * 1024 * 1024 // 10MB limit
+        });
+        
         form.parse(req, async (err, fields, files) => {
-            if (err) return res.status(500).json({ error: 'Form parse error' });
+            if (err) {
+                logSecurityEvent('FILE_UPLOAD_ERROR', { error: err.message }, req);
+                return res.status(500).json({ error: 'Form parse error' });
+            }
             
             const file = files.file ? files.file[0] : null;
             if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+            // Validate file
+            try {
+                validateFileUpload(req, res, () => {});
+            } catch (validationError) {
+                logSecurityEvent('FILE_VALIDATION_ERROR', { 
+                    filename: file.originalFilename,
+                    error: validationError.message 
+                }, req);
+                return res.status(400).json({ error: validationError.message });
+            }
 
             try {
                 const dataBuffer = fs.readFileSync(file.path);
@@ -876,9 +1117,9 @@ app.post('/api/ingest', async (req, res) => {
 
                 if (file.originalFilename.endsWith('.pdf')) {
                     const data = await pdf(dataBuffer);
-                    content = data.text;
+                    content = sanitizeHtml(data.text);
                 } else {
-                    content = dataBuffer.toString();
+                    content = sanitizeHtml(dataBuffer.toString());
                 }
 
                 const result = await learningAgent.ingest(content, `File: ${file.originalFilename}`);
@@ -886,12 +1127,22 @@ app.post('/api/ingest', async (req, res) => {
                 // Save to Knowledge Base Table
                 await pool.query(
                     'INSERT INTO knowledge_base (source, content, tags) VALUES ($1, $2, $3)',
-                    [result.source, result.content, JSON.stringify({ filename: file.originalFilename, type: 'pdf' })]
+                    [sanitizeSqlInput(result.source), sanitizeHtml(result.content), JSON.stringify({ filename: sanitizeHtml(file.originalFilename), type: 'pdf' })]
                 );
 
+                logSecurityEvent('FILE_INGESTED', { 
+                    filename: file.originalFilename, 
+                    size: file.size,
+                    type: file.contentType 
+                }, req);
+                
                 gitAgent.updateWiki('INGESTION', 'File Ingested', `Processed: ${file.originalFilename} (${content.length} chars)`);
                 res.json({ status: 'success', msg: 'File processed and saved to DB' });
             } catch (e) {
+                logSecurityEvent('FILE_PROCESSING_ERROR', { 
+                    filename: file.originalFilename,
+                    error: e.message 
+                }, req);
                 res.status(500).json({ error: e.message });
             }
         });
@@ -900,24 +1151,45 @@ app.post('/api/ingest', async (req, res) => {
 
     // JSON Logic (URLs or Plain Text)
     const { url, text, source } = req.body;
+    
+    // Validate URL or text input
+    if (url) {
+        const validationResult = validationRules.scrapingUrl[0](url);
+        if (typeof validationResult === 'string' || validationResult === false) {
+            logSecurityEvent('INVALID_URL_INGESTION', { url }, req);
+            return res.status(400).json({ error: 'Invalid URL provided' });
+        }
+    }
+    
+    if (text && text.length > 100000) { // 100KB limit
+        logSecurityEvent('TEXT_TOO_LARGE', { size: text.length }, req);
+        return res.status(400).json({ error: 'Text content too large (max 100KB)' });
+    }
+    
     try {
         if (url) {
-            const result = await learningAgent.scrapeAndLearn(url);
+            const sanitizedUrl = sanitizeSqlInput(url);
+            const result = await learningAgent.scrapeAndLearn(sanitizedUrl);
             await pool.query(
                 'INSERT INTO knowledge_base (source, content, tags) VALUES ($1, $2, $3)',
-                [result.source, result.content, JSON.stringify({ type: 'url' })]
+                [sanitizeSqlInput(result.source), sanitizeHtml(result.content), JSON.stringify({ type: 'url' })]
             );
-            gitAgent.updateWiki('INGESTION', 'URL Ingested', `Learned from: ${url}`);
+            logSecurityEvent('URL_INGESTED', { url: sanitizedUrl }, req);
+            gitAgent.updateWiki('INGESTION', 'URL Ingested', `Learned from: ${sanitizedUrl}`);
         } else if (text) {
-            const result = await learningAgent.ingest(text, source || 'Manual');
+            const sanitizedText = sanitizeHtml(text);
+            const sanitizedSource = source ? sanitizeSqlInput(source) : 'Manual';
+            const result = await learningAgent.ingest(sanitizedText, sanitizedSource);
             await pool.query(
                 'INSERT INTO knowledge_base (source, content, tags) VALUES ($1, $2, $3)',
-                [result.source, result.content, JSON.stringify({ type: 'manual' })]
+                [sanitizeSqlInput(result.source), sanitizeHtml(result.content), JSON.stringify({ type: 'manual' })]
             );
+            logSecurityEvent('TEXT_INGESTED', { source: sanitizedSource, size: text.length }, req);
             gitAgent.updateWiki('INGESTION', 'Text Ingested', `Manual input added`);
         }
         res.json({ status: 'success' });
     } catch (e) {
+        logSecurityEvent('INGESTION_ERROR', { error: e.message }, req);
         res.status(500).json({ error: e.message });
     }
 });
@@ -1171,7 +1443,7 @@ async function checkHotmartSession() {
 // Helper function to scrape Hotmart product details
 async function scrapeHotmartProductDetails(hotmartId, page = null) {
     try {
-        console.log('Scraping Hotmart product details for:', hotmartId);
+        logger.info('Scraping Hotmart product details', { hotmartId });
         
         // Import the real data extractors
         const { extractRealHotmartData, extractProductFromPage } = require('./hotmart_data_extractor.js');
@@ -1191,7 +1463,7 @@ async function scrapeHotmartProductDetails(hotmartId, page = null) {
             realData = await extractRealHotmartData(hotmartId);
         }
         
-        console.log('Real data extracted for:', realData.name);
+        logger.info('Real data extracted', { name: realData.name });
         
         return realData;
         
@@ -1417,9 +1689,36 @@ app.post('/api/products/bulk', async (req, res) => {
 app.post('/api/agents/global-scan/start', async (req, res) => {
     const { maxProducts = 50, enableLearning = true } = req.body;
     
+    // Check for existing running scan
     try {
-        console.log(`🚀 Starting Global Scan with Super-Agents Chain...`);
+        const existingScan = await pool.query(
+            'SELECT current_task, last_activity FROM agent_status WHERE agent_name = $1 AND current_task = $2 ORDER BY last_activity DESC LIMIT 1',
+            ['SuperScraping', 'active']
+        );
+        
+        if (existingScan.rows.length > 0) {
+            const lastActivity = new Date(existingScan.rows[0].last_activity);
+            const timeSinceLastActivity = Date.now() - lastActivity.getTime();
+            
+            // If scan is running for less than 2 minutes, reject new request
+            if (timeSinceLastActivity < 120000) {
+                return res.status(409).json({ 
+                    error: 'Scan already in progress',
+                    message: 'A global scan is already running. Please wait for it to complete.',
+                    timeElapsed: Math.floor(timeSinceLastActivity / 1000)
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error checking existing scan:', error);
+    }
+    
+    try {
+        logger.info('Global Scan started', { maxProducts, enableLearning });
         console.log(`📋 Configuration: maxProducts=${maxProducts}, learning=${enableLearning}`);
+        
+        // Clean up zombie processes before starting
+        await cleanupZombieScans();
         
         // Update system status
         await pool.query(
@@ -1431,8 +1730,12 @@ app.post('/api/agents/global-scan/start', async (req, res) => {
         const SuperScrapingAgent = require('./src/agents/SuperScrapingAgent');
         const superAgent = new SuperScrapingAgent();
         
-        // Execute global scan chain
-        superAgent.executeGlobalScan(maxProducts).then(async (result) => {
+        // Execute global scan chain with timeout and error handling
+        const SCAN_TIMEOUT = 180000; // 3 minutes max
+        let scanCompleted = false;
+        
+        const scanPromise = superAgent.executeGlobalScan(maxProducts).then(async (result) => {
+            scanCompleted = true;
             console.log('✅ Global Scan Chain Complete:', result);
             
             if (result.success) {
@@ -1447,18 +1750,30 @@ app.post('/api/agents/global-scan/start', async (req, res) => {
                 
                 // Generate analytics if learning enabled
                 if (enableLearning) {
-                    const SuperAnalyticsAgent = require('./src/agents/SuperAnalyticsAgent');
-                    const analyticsAgent = new SuperAnalyticsAgent();
-                    
-                    analyticsAgent.generateComprehensiveReport().then(report => {
-                        console.log('📊 Analytics Report Generated:', report);
+                    try {
+                        const SuperAnalyticsAgent = require('./src/agents/SuperAnalyticsAgent');
+                        const analyticsAgent = new SuperAnalyticsAgent();
                         
-                        // Store insights for future learning
-                        pool.query(
-                            'INSERT INTO agent_events (agent_name, event_type, event_data, created_at) VALUES ($1, $2, $3, NOW())',
-                            ['AnalyticsAgent', 'global_report', JSON.stringify(report)]
-                        );
-                    });
+                        const analyticsTimeout = setTimeout(() => {
+                            console.warn('⚠️ Analytics generation timeout, skipping...');
+                        }, 30000); // 30 seconds timeout for analytics
+                        
+                        analyticsAgent.generateComprehensiveReport().then(report => {
+                            clearTimeout(analyticsTimeout);
+                            console.log('📊 Analytics Report Generated:', report);
+                            
+                            // Store insights for future learning
+                            pool.query(
+                                'INSERT INTO agent_events (agent_name, event_type, event_data, created_at) VALUES ($1, $2, $3, NOW())',
+                                ['AnalyticsAgent', 'global_report', JSON.stringify(report)]
+                            ).catch(err => console.error('Error storing analytics report:', err));
+                        }).catch(err => {
+                            clearTimeout(analyticsTimeout);
+                            console.error('Analytics generation failed:', err);
+                        });
+                    } catch (error) {
+                        console.error('Error initializing analytics:', error);
+                    }
                 }
                 
                 console.log('🎉 Global Scan Full Chain Completed Successfully!');
@@ -1470,6 +1785,7 @@ app.post('/api/agents/global-scan/start', async (req, res) => {
                 );
             }
         }).catch(async (err) => {
+            scanCompleted = true;
             console.error('❌ Global Scan Chain Error:', err);
             
             // Update agent status to error
@@ -1478,16 +1794,88 @@ app.post('/api/agents/global-scan/start', async (req, res) => {
                 ['SuperScraping', 'error', `Global scan error: ${err.message}`]
             );
         });
+        
+        // Set timeout for the entire scan
+        setTimeout(async () => {
+            if (!scanCompleted) {
+                console.warn('⚠️ Global scan timeout reached, marking as error');
+                await pool.query(
+                    'SELECT update_agent_activity($1, $2, $3)',
+                    ['SuperScraping', 'error', 'Global scan timeout exceeded (3 minutes)']
+                );
+            }
+        }, SCAN_TIMEOUT);
 
         res.json({ 
             status: 'Global Scan Started', 
             msg: `Super-Agents chain activated: Scraping → Analysis → Content Generation`,
             chain: ['SuperScrapingAgent', 'SuperContentAgent', 'SuperAnalyticsAgent'],
-            config: { maxProducts, enableLearning }
+            config: { maxProducts, enableLearning },
+            timeout: SCAN_TIMEOUT
         });
         
     } catch (error) {
         console.error('❌ Global Scan Start Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Clean up zombie scans
+async function cleanupZombieScans() {
+    try {
+        console.log('🧹 Checking for zombie scans...');
+        
+        // Mark scans older than 5 minutes as errors
+        const zombieResult = await pool.query(`
+            UPDATE agent_status 
+            SET current_task = 'error', 
+                last_activity = NOW()
+            WHERE agent_name = 'SuperScraping' 
+            AND current_task = 'active' 
+            AND last_activity < NOW() - INTERVAL '5 minutes'
+            RETURNING agent_name, current_task, last_activity
+        `);
+        
+        if (zombieResult.rows.length > 0) {
+            console.log(`🧹 Cleaned up ${zombieResult.rows.length} zombie scan(s):`, zombieResult.rows);
+        } else {
+            console.log('✅ No zombie scans found');
+        }
+        
+        return zombieResult.rows.length;
+        
+    } catch (error) {
+        console.error('Error cleaning up zombie scans:', error);
+        return 0;
+    }
+}
+
+// --- Force Cleanup Endpoint ---
+app.post('/api/agents/cleanup', async (req, res) => {
+    try {
+        logger.info('Manual cleanup requested');
+        const cleanedCount = await cleanupZombieScans();
+        
+        // Also clean up any stuck browser processes (if any)
+        try {
+            const { exec } = require('child_process');
+            exec('pkill -f "puppeteer" || pkill -f "chrome" || true', (error, stdout, stderr) => {
+                if (error && !error.message.includes('No such process')) {
+                    console.log('Process cleanup attempt:', error.message);
+                }
+            });
+        } catch (procError) {
+            console.log('Process cleanup not available:', procError.message);
+        }
+        
+        res.json({
+            status: 'cleanup_completed',
+            zombie_scans_cleaned: cleanedCount,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('❌ Manual cleanup error:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -1497,7 +1885,7 @@ app.post('/api/agents/detector/start', async (req, res) => {
     const { deep = false } = req.body;
     
     try {
-        console.log(`🚀 Starting Legacy Detector Agent (deep scan: ${deep})`);
+        logger.info('Legacy Detector Agent started', { deep });
         
         // Update agent status in database
         await pool.query(
@@ -1507,7 +1895,7 @@ app.post('/api/agents/detector/start', async (req, res) => {
         
         // Run in background with proper status updates
         detectorAgent.scanMarket().then(async (result) => {
-            console.log('✅ Legacy Scan complete:', result);
+            logger.info('Legacy scan complete', { new_products: result.new_products });
             
             if (result.status === 'success') {
                 // Update agent status to completed
@@ -1545,15 +1933,7 @@ app.post('/api/agents/detector/start', async (req, res) => {
     }
 });
 
-        res.json({ 
-            status: 'Detector Agent Started', 
-            msg: `The agent is browsing Hotmart in the background... (Deep scan: ${deep})` 
-        });
-        
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+
 
 // --- Get Products with Metrics ---
 app.get('/api/products/metrics', async (req, res) => {
@@ -1601,36 +1981,8 @@ app.get('/api/products/metrics', async (req, res) => {
     }
 });
     
-app.get('/health', async (req, res) => {
-// ...
-  try {
-    const dbRes = await pool.query('SELECT NOW()');
-    res.json({ 
-      status: 'OK', 
-      db: 'Connected', 
-      timestamp: dbRes.rows[0].now,
-      redis: redisClient && redisClient.isOpen ? 'Connected' : 'Disconnected' 
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'Error', error: error.message });
-  }
-});
-});
-
-app.get('/health', async (req, res) => {
-// ...
-  try {
-    const dbRes = await pool.query('SELECT NOW()');
-    res.json({ 
-      status: 'OK', 
-      db: 'Connected', 
-      timestamp: dbRes.rows[0].now,
-      redis: redisClient && redisClient.isOpen ? 'Connected' : 'Disconnected' 
-    });
-  } catch (error) {
-    res.status(500).json({ status: 'Error', error: error.message });
-  }
-});
+// /health endpoint is defined at the top of the file (simple, lightweight)
+// Removed duplicate DB-checking /health endpoint
 
 // --- AGENT MANAGEMENT & CONTROL ---
 

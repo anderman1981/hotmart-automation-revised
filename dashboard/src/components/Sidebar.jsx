@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Package, Bot, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, Bot, Settings, Shield, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 
 const Sidebar = () => {
@@ -8,8 +8,9 @@ const Sidebar = () => {
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-        { icon: Package, label: 'Products', path: '/productos' }, // Fixed path
-        { icon: Bot, label: 'Agents', path: '/agentes' }, // Fixed path
+        { icon: Package, label: 'Products', path: '/productos' },
+        { icon: Bot, label: 'Agents', path: '/agentes' },
+        { icon: Shield, label: 'Auditoría', path: '/audit' },
     ];
 
     return (

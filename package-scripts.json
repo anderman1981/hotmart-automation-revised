@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "test": "node scripts/test-runner.js",
+    "test:unit": "node scripts/test-runner.js unit",
+    "test:integration": "node scripts/test-runner.js integration", 
+    "test:e2e": "node scripts/test-runner.js e2e",
+    "test:coverage": "node scripts/test-runner.js coverage",
+    "test:all": "node scripts/test-runner.js all",
+    "test:install": "node scripts/test-runner.js install",
+    "test:env": "node scripts/test-runner.js env",
+    "test:report": "node scripts/test-runner.js report"
+  }
+}

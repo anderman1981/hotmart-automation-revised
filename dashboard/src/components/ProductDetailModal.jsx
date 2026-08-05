@@ -1,3 +1,4 @@
+import API_BASE from '../api';
 import React, { useState, useEffect } from 'react';
 import { X, Package, DollarSign, Users, Star, ExternalLink, Shield, Clock, TrendingUp, AlertCircle } from 'lucide-react';
 
@@ -10,7 +11,7 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
     useEffect(() => {
         if (isOpen && productId) {
             console.log('Modal opened for product:', productId);
-            console.log('API URL from env:', import.meta.env.VITE_API_URL);
+            console.log('API URL from env:', API_BASE);
             fetchProductDetails();
         }
     }, [isOpen, productId]);
@@ -21,12 +22,12 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
         
         try {
             console.log('Fetching product details for:', productId);
-            console.log('API URL from env:', import.meta.env.VITE_API_URL);
+            console.log('API URL from env:', API_BASE);
             
             // First check authorization
-            const authResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/hotmart/check-auth`);
+            const authResponse = await fetch(`${API_BASE}/api/hotmart/check-auth`);
             console.log('Auth response status:', authResponse.status);
-            console.log('Auth response URL:', `${import.meta.env.VITE_API_URL}/api/hotmart/check-auth`);
+            console.log('Auth response URL:', `${API_BASE}/api/hotmart/check-auth`);
             
             if (!authResponse.ok) {
                 throw new Error(`Auth check failed: ${authResponse.status}`);
@@ -45,9 +46,9 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
             setAuthorized(true);
             
             // Fetch detailed product information
-            const detailResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${productId}/details`);
+            const detailResponse = await fetch(`${API_BASE}/api/products/${productId}/details`);
             console.log('Detail response status:', detailResponse.status);
-            console.log('Detail response URL:', `${import.meta.env.VITE_API_URL}/api/products/${productId}/details`);
+            console.log('Detail response URL:', `${API_BASE}/api/products/${productId}/details`);
             
             if (!detailResponse.ok) {
                 throw new Error(`No se pudieron obtener los detalles del producto: ${detailResponse.status}`);
@@ -68,7 +69,7 @@ const ProductDetailModal = ({ productId, onClose, isOpen }) => {
     const requestAuthorization = async () => {
         try {
             console.log('Requesting authorization...');
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/hotmart/request-auth`, {
+            const response = await fetch(`${API_BASE}/api/hotmart/request-auth`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });

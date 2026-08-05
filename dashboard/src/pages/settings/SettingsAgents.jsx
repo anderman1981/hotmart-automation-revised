@@ -1,3 +1,4 @@
+import API_BASE from '../../api';
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Square, Activity, Database, HardDrive, Cpu, Upload, Cloud } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,7 +14,7 @@ const SettingsAgents = () => {
 
     const fetchAgents = async () => {
         try {
-            const res = await fetch(import.meta.env.VITE_API_URL + '/api/agents');
+            const res = await fetch(API_BASE + '/api/agents');
             const data = await res.json();
             if (data.agents) setAgents(data.agents);
         } catch (error) {
@@ -34,7 +35,7 @@ const SettingsAgents = () => {
         if (!newAgentData.name) return toast.error('Agent Name is required');
         
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/create`, {
+            const res = await fetch(`${API_BASE}/api/agents/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -62,7 +63,7 @@ const SettingsAgents = () => {
         if (action === 'start') {
             toast.info(`Requesting Manager to start ${agentId}...`);
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/${agentId}/start`, { method: 'POST' });
+                const res = await fetch(`${API_BASE}/api/agents/${agentId}/start`, { method: 'POST' });
                 const data = await res.json();
                 if (data.status === 'success') {
                     toast.success(`Signal sent to start ${agentId}`);
@@ -77,7 +78,7 @@ const SettingsAgents = () => {
         }
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/${agentId}/stop`, { method: 'POST' });
+            const res = await fetch(`${API_BASE}/api/agents/${agentId}/stop`, { method: 'POST' });
             const data = await res.json();
             if (data.status) {
                 toast.success(`Agent ${agentId} stopped`);
@@ -97,7 +98,7 @@ const SettingsAgents = () => {
         formData.append('file', file);
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/ingest`, {
+            const res = await fetch(`${API_BASE}/api/ingest`, {
                 method: 'POST',
                 body: formData
             });

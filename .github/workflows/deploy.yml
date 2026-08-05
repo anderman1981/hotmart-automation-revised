@@ -1,0 +1,244 @@
+name: Deploy Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      rollback:
+        description: 'Rollback to previous version'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Environment validation
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy-env: ${{ steps.env.outputs.environment }}
+      should-deploy: ${{ steps.env.outputs.should-deploy }}
+    steps:
+      - name: Determine deployment environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref_name }}" = "main" ]; then
+            ENVIRONMENT="production"
+          else
+            ENVIRONMENT="staging"
+          fi
+          
+          if [ "${{ github.event.workflow_run.conclusion }}" = "success" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SHOULD_DEPLOY="true"
+          else
+            SHOULD_DEPLOY="false"
+          fi
+          
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "should-deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
+          
+          echo "Deploying to: $ENVIRONMENT"
+          echo "Should deploy: $SHOULD_DEPLOY"
+
+  # Staging deployment
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.should-deploy == 'true' && needs.validate.outputs.deploy-env == 'staging'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment"
+          # Deploy to staging server
+          docker-compose -f docker-compose.staging.yml pull
+          docker-compose -f docker-compose.staging.yml up -d
+          
+          # Health check
+          sleep 30
+          curl -f http://staging.example.com/health || exit 1
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on staging"
+          # Add smoke tests here
+
+      - name: Notify staging deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: |
+            Staging deployment ${{ job.status }}
+            Repository: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Production deployment
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: [validate, deploy-staging]
+    if: needs.validate.outputs.should-deploy == 'true' && needs.validate.outputs.deploy-env == 'production'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create backup
+        run: |
+          echo "Creating backup before deployment"
+          # Backup current production state
+          docker-compose -f docker-compose.prod.yml exec db pg_dump -U hotmart_user hotmart > backup_$(date +%Y%m%d_%H%M%S).sql
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment"
+          # Blue-green deployment
+          docker-compose -f docker-compose.prod.yml pull
+          docker-compose -f docker-compose.prod.yml up -d --no-deps motor dashboard
+          
+          # Wait for services to be ready
+          sleep 60
+
+      - name: Health check
+        run: |
+          echo "Performing health checks"
+          # Check all services
+          curl -f http://production.example.com/health || exit 1
+          curl -f http://production.example.com/api/health || exit 1
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on production"
+          # Critical path tests
+          node test_production_smoke.js || exit 1
+
+      - name: Update load balancer
+        run: |
+          echo "Updating load balancer"
+          # Switch traffic to new deployment
+          # Add load balancer configuration here
+
+      - name: Notify production deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: |
+            Production deployment ${{ job.status }}
+            Repository: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+            Deployer: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Rollback job
+  rollback:
+    runs-on: ubuntu-latest
+    needs: validate
+    if: failure() && (needs.validate.outputs.deploy-env == 'production' || github.event.inputs.rollback == 'true')
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get previous version
+        id: version
+        run: |
+          # Get the previous successful deployment
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1)
+          echo "previous-tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+          echo "Rolling back to: $PREVIOUS_TAG"
+
+      - name: Rollback deployment
+        run: |
+          echo "Rolling back to previous version"
+          # Rollback to previous Docker images
+          docker-compose -f docker-compose.prod.yml pull
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          # Restore database if needed
+          # docker-compose -f docker-compose.prod.yml exec db psql -U hotmart_user hotmart < backup_file.sql
+
+      - name: Verify rollback
+        run: |
+          echo "Verifying rollback"
+          sleep 30
+          curl -f http://production.example.com/health || exit 1
+
+      - name: Notify rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: |
+            Rollback completed ${{ job.status }}
+            Repository: ${{ github.repository }}
+            Previous version: ${{ steps.version.outputs.previous-tag }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Post-deployment monitoring
+  monitor:
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always() && needs.deploy-production.result == 'success'
+    
+    steps:
+      - name: Monitor deployment
+        run: |
+          echo "Starting post-deployment monitoring"
+          # Monitor for 10 minutes
+          for i in {1..20}; do
+            curl -f http://production.example.com/health || {
+              echo "Health check failed at attempt $i"
+              exit 1
+            }
+            echo "Health check passed - attempt $i/20"
+            sleep 30
+          done
+          echo "Deployment monitoring completed successfully"
+
+      - name: Update deployment status
+        run: |
+          echo "Updating deployment status in monitoring system"
+          # Update status in Datadog, New Relic, etc.
+
+  # Cleanup old images
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: [deploy-production, deploy-staging]
+    if: always()
+    
+    steps:
+      - name: Cleanup old Docker images
+        run: |
+          echo "Cleaning up old Docker images"
+          docker system prune -f
+          # Remove images older than 7 days
+          docker image prune -a --filter "until=168h" -f

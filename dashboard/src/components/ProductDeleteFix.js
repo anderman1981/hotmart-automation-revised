@@ -1,9 +1,10 @@
+import API_BASE from '../api';
 // Modified delete function without Alert
 const handleDeleteProduct = async (product) => {
     console.log(`🗑️ Deleting product: ${product.name} (${product.id})`);
     
     try {
-        const response = await fetch(import.meta.env.VITE_API_URL + `/api/products/${product.id}`, {
+        const response = await fetch(API_BASE + `/api/products/${product.id}`, {
                 method: 'DELETE'
         });
         

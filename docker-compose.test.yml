@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15
+    container_name: hotmart_db_test
+    restart: always
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks:
+      - hotmart_test_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U test_user -d test_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: hotmart_redis_test
+    restart: always
+    tmpfs:
+      - /data
+    networks:
+      - hotmart_test_net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  motor:
+    build: ./motor
+    container_name: hotmart_motor_test
+    restart: "no"
+    environment:
+      - NODE_ENV=test
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      - DB_USER=test_user
+      - DB_PASSWORD=test_password
+      - DB_NAME=test_db
+      - LOG_LEVEL=debug
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hotmart_test_net
+    command: npm run test
+
+networks:
+  hotmart_test_net:
+    driver: bridge

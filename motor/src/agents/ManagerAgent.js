@@ -1,6 +1,7 @@
 import axios from 'axios';
 import gitAgent from './GitAgent.js';
 import contentAgent from './ContentAgent.js';
+import instagramAgent from './InstagramAgent.js';
 
 import pg from 'pg';
 const { Pool } = pg;
@@ -101,6 +102,24 @@ class ManagerAgent {
                 this.notifyN8N('report_ready', result);
                 break;
 
+            case 'instagram_post':
+                // Publish to Instagram
+                const postContent = payload.content || await contentAgent.generateMarketingPost(payload.product, payload.niche);
+                result = await instagramAgent.publishContent(postContent, payload.mediaPath);
+                if (result.status === 'success') {
+                    this.notifyN8N('instagram_posted', { content: postContent, timestamp: new Date() });
+                }
+                break;
+
+            case 'instagram_story':
+                // Publish story to Instagram
+                const storyContent = payload.content || await contentAgent.generateMarketingPost(payload.product, payload.niche);
+                result = await instagramAgent.publishStory(storyContent, payload.mediaPath);
+                if (result.status === 'success') {
+                    this.notifyN8N('instagram_story_posted', { content: storyContent, timestamp: new Date() });
+                }
+                break;
+
             case 'run_daily_routine':
                 result = await this.runDailyRoutine();
                 break;
@@ -172,6 +191,33 @@ class ManagerAgent {
                 strategies.push({ product: p.name, strategy: strat });
             }
             report.steps.push({ name: 'Strategy Gen', status: 'completed', msg: `${strategies.length} strategies created`, custom_data: strategies });
+
+            // Step 4: Instagram Automation
+            console.log('Step 4: Instagram Agent Automation...');
+            try {
+                await this.wakeAgent('instagram');
+                
+                // Post content for each product strategy
+                for (const strategy of strategies.slice(0, 1)) { // Limit to 1 post per day
+                    console.log(`Step 4a: Publishing Instagram post for ${strategy.product}...`);
+                    const postResult = await instagramAgent.publishContent(strategy.strategy.content);
+                    report.steps.push({ 
+                        name: `Instagram Post - ${strategy.product}`, 
+                        status: postResult.status, 
+                        details: postResult.message 
+                    });
+                    
+                    await new Promise(r => setTimeout(r, 5000)); // 5 second delay between posts
+                }
+                
+            } catch (e) {
+                report.steps.push({ 
+                    name: 'Instagram Automation', 
+                    status: 'failed', 
+                    details: e.message 
+                });
+                console.log('⚠️ Instagram automation failed:', e.message);
+            }
 
             console.log('✅ Daily Routine Completed.');
             this.notifyN8N('daily_routine_completed', report);

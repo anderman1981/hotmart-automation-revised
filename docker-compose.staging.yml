@@ -1,0 +1,99 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15
+    container_name: hotmart_db_staging
+    restart: always
+    environment:
+      POSTGRES_USER: ${STAGING_DB_USER}
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD}
+      POSTGRES_DB: ${STAGING_DB_NAME}
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+      - ./motor/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hotmart_staging_net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${STAGING_DB_USER} -d ${STAGING_DB_NAME}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: hotmart_redis_staging
+    restart: always
+    volumes:
+      - staging_redis_data:/data
+    networks:
+      - hotmart_staging_net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  motor:
+    image: ghcr.io/${GITHUB_REPOSITORY}/motor:${GITHUB_SHA}
+    container_name: hotmart_motor_staging
+    restart: always
+    volumes:
+      - ./motor/logs:/app/logs
+      - ./assets:/app/assets
+    ports:
+      - "5123:4123"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hotmart_staging_net
+    environment:
+      - NODE_ENV=staging
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      - DB_USER=${STAGING_DB_USER}
+      - DB_PASSWORD=${STAGING_DB_PASSWORD}
+      - DB_NAME=${STAGING_DB_NAME}
+      - HOTMART_EMAIL=${STAGING_HOTMART_EMAIL}
+      - HOTMART_PASSWORD=${STAGING_HOTMART_PASSWORD}
+      - LOG_LEVEL=info
+
+  dashboard:
+    image: ghcr.io/${GITHUB_REPOSITORY}/dashboard:${GITHUB_SHA}
+    container_name: hotmart_dashboard_staging
+    restart: always
+    ports:
+      - "5124:4124"
+    environment:
+      - VITE_API_URL=http://staging.example.com:5123
+    depends_on:
+      - motor
+    networks:
+      - hotmart_staging_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: hotmart_nginx_staging
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/staging.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - motor
+      - dashboard
+    networks:
+      - hotmart_staging_net
+
+networks:
+  hotmart_staging_net:
+    driver: bridge
+
+volumes:
+  staging_postgres_data:
+  staging_redis_data:

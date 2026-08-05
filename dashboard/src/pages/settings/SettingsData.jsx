@@ -1,3 +1,4 @@
+import API_BASE from '../../api';
 import React, { useState, useEffect } from 'react';
 import { Globe, Database, FileText, Link2, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,7 +9,7 @@ const SettingsData = () => {
 
     const fetchSources = async () => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/sources`);
+            const res = await fetch(`${API_BASE}/api/settings/sources`);
             const data = await res.json();
             if (data.sources) setSources(data.sources);
         } catch (e) {
@@ -27,7 +28,7 @@ const SettingsData = () => {
     const handleConnect = async () => {
         if (!newSource.name) return toast.error('Source name is required');
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/settings/sources`, {
+            const res = await fetch(`${API_BASE}/api/settings/sources`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newSource)
@@ -44,7 +45,7 @@ const SettingsData = () => {
 
     const handleDisconnect = async (id) => {
         try {
-            await fetch(`${import.meta.env.VITE_API_URL}/api/settings/sources/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE}/api/settings/sources/${id}`, { method: 'DELETE' });
             toast.success('Source disconnected');
             fetchSources();
         } catch (e) {
