@@ -2,32 +2,92 @@
  * HotmartURLGenerator - Genera URLs correctas de Hotmart
  * 
  * Formatos de URL correctos:
- * - Sales Page: https://pay.hotmart.com/XXXXXXXX
- * - Affiliate: https://pay.hotmart.com/XXXXXXXX?ref=XXXXXXXX
- * - Marketplace: https://hotmart.com/marketplace/XXXXXXXX
+ * - Sales Page: https://pay.hotmart.com/{offer_code}
+ * - Affiliate: https://pay.hotmart.com/{offer_code}?ref={affiliate_code}
+ * 
+ * NOTA: Los offer codes son códigos únicos como "02mhofjd", "n82b9jqz"
+ * NO son los IDs de producto como "PROD17859435452250"
+ * 
+ * Para obtener offer codes reales se necesita la API de Hotmart:
+ * - Client ID y Client Secret en .env
+ * - Documentación: https://developers.hotmart.com/docs/
  */
+
+import hotmartClient from './HotmartAPIClient.js';
 
 const AFFILIATE_CODE = process.env.HOTMART_AFFILIATE_CODE || 'W949655431L';
 
+// Cache de offer codes por product ucode
+const offerCodeCache = new Map();
+
+/**
+ * Obtiene el offer code real de un producto usando la API de Hotmart
+ * @param {string} productUcode - UUID del producto (ej: "839F1A4F-43DC-F60F-13FE-6C8BD23F6781")
+ * @returns {Promise<string|null>} Offer code o null si no se puede obtener
+ */
+export async function getOfferCodeFromAPI(productUcode) {
+    if (!productUcode) return null;
+    
+    // Verificar cache
+    if (offerCodeCache.has(productUcode)) {
+        return offerCodeCache.get(productUcode);
+    }
+    
+    try {
+        const offers = await hotmartClient.getProductOffers(productUcode);
+        if (offers.items && offers.items.length > 0) {
+            // Tomar la primera oferta (la principal)
+            const mainOffer = offers.items.find(o => o.is_main_offer) || offers.items[0];
+            const code = mainOffer.code;
+            
+            // Guardar en cache
+            offerCodeCache.set(productUcode, code);
+            
+            console.log(`✅ Got offer code for ${productUcode}: ${code}`);
+            return code;
+        }
+    } catch (error) {
+        console.warn(`⚠️ Could not get offer code for ${productUcode}:`, error.message);
+    }
+    
+    return null;
+}
+
 /**
  * Genera la URL de venta de un producto Hotmart
- * @param {string} productId - ID del producto (ej: R94668718U, K94730729B)
+ * @param {string} productId - ID del producto o ucode
+ * @param {string} offerCode - Offer code real (opcional, se obtiene de la API si no se proporciona)
  * @returns {string} URL de venta
  */
-export function generateSalesUrl(productId) {
-    const cleanId = productId.replace(/^HM-/, '');
-    const salesId = cleanId.startsWith('R') ? cleanId : `R${cleanId}`;
-    return `https://pay.hotmart.com/${salesId}`;
+export async function generateSalesUrl(productId, offerCode = null) {
+    // Si ya tenemos un offer code, usarlo directamente
+    if (offerCode) {
+        return `https://pay.hotmart.com/${offerCode}`;
+    }
+    
+    // Intentar obtener de la API
+    if (hotmartClient.hasCredentials()) {
+        const code = await getOfferCodeFromAPI(productId);
+        if (code) {
+            return `https://pay.hotmart.com/${code}`;
+        }
+    }
+    
+    // Fallback: generar URL con formato conocido
+    // NOTA: Esto probablemente NO funcionará, pero es mejor que nada
+    console.warn(`⚠️ Using fallback URL for ${productId} - may not work`);
+    return `https://pay.hotmart.com/${productId}`;
 }
 
 /**
  * Genera la URL de afiliado de un producto Hotmart
- * @param {string} productId - ID del producto
+ * @param {string} productId - ID del producto o ucode
  * @param {string} affiliateCode - Código de afiliado (opcional)
- * @returns {string} URL de afiliado
+ * @param {string} offerCode - Offer code real (opcional)
+ * @returns {Promise<string>} URL de afiliado
  */
-export function generateAffiliateUrl(productId, affiliateCode = AFFILIATE_CODE) {
-    const salesUrl = generateSalesUrl(productId);
+export async function generateAffiliateUrl(productId, affiliateCode = AFFILIATE_CODE, offerCode = null) {
+    const salesUrl = await generateSalesUrl(productId, offerCode);
     return `${salesUrl}?ref=${affiliateCode}`;
 }
 
@@ -78,11 +138,20 @@ export function isValidHotmartUrl(url) {
     return validPatterns.some(pattern => pattern.test(url));
 }
 
+/**
+ * Limpia el cache de offer codes
+ */
+export function clearOfferCodeCache() {
+    offerCodeCache.clear();
+}
+
 export default {
+    getOfferCodeFromAPI,
     generateSalesUrl,
     generateAffiliateUrl,
     generateMarketplaceUrl,
     extractProductIdFromUrl,
     isValidHotmartUrl,
+    clearOfferCodeCache,
     AFFILIATE_CODE
 };

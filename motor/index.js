@@ -231,23 +231,30 @@ app.get('/api/products', async (req, res) => {
     const result = await pool.query('SELECT * FROM products ORDER BY created_at DESC');
     
     // Enhance products with affiliate status and correct URLs
-    const enhancedProducts = result.rows.map(product => {
-      const baseId = product.hotmart_id.replace('HM-', '');
-      const salesId = baseId.startsWith('R') ? baseId : `R${baseId}`;
+    const enhancedProducts = [];
+    for (const product of result.rows) {
+      // Generate real URLs using API if available
+      let salesUrl = product.url_sales_page;
+      let affiliateUrl = product.affiliate_url;
       
-      return {
+      if (!salesUrl || !affiliateUrl) {
+        salesUrl = await generateSalesUrl(product.hotmart_id);
+        affiliateUrl = await generateAffiliateUrl(product.hotmart_id);
+      }
+      
+      enhancedProducts.push({
         ...product,
         // Ensure we have correct URLs
-        url_sales_page: product.url_sales_page || `https://pay.hotmart.com/${salesId}`,
-        sales_page_url: product.sales_page_url || `https://pay.hotmart.com/${salesId}`,
-        affiliate_url: product.affiliate_url || `https://pay.hotmart.com/${salesId}?ref=W949655431L`,
+        url_sales_page: salesUrl,
+        sales_page_url: product.sales_page_url || salesUrl,
+        affiliate_url: affiliateUrl,
         // Add affiliate status
         affiliate_status: product.affiliate_status || 'pending',
         has_affiliate_link: true,
         // Ensure we have the correct hotmart_id format
         hotmart_id: product.hotmart_id
-      };
-    });
+      });
+    }
     
     res.json({ products: enhancedProducts });
   } catch (err) {
@@ -1321,14 +1328,14 @@ app.get('/api/redirect/:productId', async (req, res) => {
         if (result.rows.length > 0) {
             const product = result.rows[0];
             const redirectUrl = ref 
-                ? generateAffiliateUrl(product.hotmart_id, ref)
-                : product.affiliate_url || generateAffiliateUrl(product.hotmart_id);
+                ? await generateAffiliateUrl(product.hotmart_id, ref)
+                : product.affiliate_url || await generateAffiliateUrl(product.hotmart_id);
             
             logger.info('Affiliate redirect', { productId, redirectUrl });
             res.redirect(302, redirectUrl);
         } else {
             // Fallback - generate URL from ID
-            const fallbackUrl = generateAffiliateUrl(productId, ref);
+            const fallbackUrl = await generateAffiliateUrl(productId, ref);
             res.redirect(302, fallbackUrl);
         }
     } catch (e) {
@@ -1344,14 +1351,17 @@ app.get('/api/products/urls', async (req, res) => {
             'SELECT id, hotmart_id, name, niche, url_sales_page, affiliate_url, status, commission_rate FROM products ORDER BY created_at DESC'
         );
         
-        const products = result.rows.map(p => ({
-            ...p,
-            // Ensure URLs are always present
-            url_sales_page: p.url_sales_page || generateSalesUrl(p.hotmart_id),
-            affiliate_url: p.affiliate_url || generateAffiliateUrl(p.hotmart_id),
-            // Generate short redirect URL
-            redirect_url: `${req.protocol}://${req.get('host')}/api/redirect/${p.hotmart_id}`
-        }));
+        const products = [];
+        for (const p of result.rows) {
+            products.push({
+                ...p,
+                // Ensure URLs are always present
+                url_sales_page: p.url_sales_page || await generateSalesUrl(p.hotmart_id),
+                affiliate_url: p.affiliate_url || await generateAffiliateUrl(p.hotmart_id),
+                // Generate short redirect URL
+                redirect_url: `${req.protocol}://${req.get('host')}/api/redirect/${p.hotmart_id}`
+            });
+        }
         
         res.json({ products, total: products.length });
     } catch (e) {
@@ -1360,6 +1370,74 @@ app.get('/api/products/urls', async (req, res) => {
 });
 
 // --- AFFILIATE REDIRECT END ---
+
+// --- HOTMART API INTEGRATION ---
+import hotmartClient from './src/utils/HotmartAPIClient.js';
+
+// Verify Hotmart API credentials
+app.get('/api/hotmart/verify', async (req, res) => {
+    try {
+        if (!hotmartClient.hasCredentials()) {
+            return res.json({ 
+                configured: false, 
+                message: 'Hotmart API credentials not configured. Set HOTMART_CLIENT_ID and HOTMART_CLIENT_SECRET in .env',
+                instructions: 'Get credentials from: Hotmart → Tools → Developer Tools → Credentials'
+            });
+        }
+        
+        const result = await hotmartClient.validateCredentials();
+        res.json({ configured: true, ...result });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Fetch products directly from Hotmart API
+app.get('/api/hotmart/products', async (req, res) => {
+    try {
+        if (!hotmartClient.hasCredentials()) {
+            return res.status(400).json({ 
+                error: 'Hotmart API credentials not configured',
+                instructions: 'Set HOTMART_CLIENT_ID and HOTMART_CLIENT_SECRET in .env'
+            });
+        }
+        
+        const products = await hotmartClient.listProducts({
+            status: req.query.status || 'ACTIVE',
+            maxResults: req.query.limit || 50
+        });
+        
+        res.json(products);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get offers for a specific product (to get real offer codes)
+app.get('/api/hotmart/products/:ucode/offers', async (req, res) => {
+    try {
+        if (!hotmartClient.hasCredentials()) {
+            return res.status(400).json({ 
+                error: 'Hotmart API credentials not configured'
+            });
+        }
+        
+        const offers = await hotmartClient.getProductOffers(req.params.ucode);
+        
+        // Enhance offers with URLs
+        const enhancedOffers = offers.items?.map(offer => ({
+            ...offer,
+            sales_url: `https://pay.hotmart.com/${offer.code}`,
+            affiliate_url: `https://pay.hotmart.com/${offer.code}?ref=${process.env.HOTMART_AFFILIATE_CODE || 'W949655431L'}`
+        })) || [];
+        
+        res.json({ items: enhancedOffers });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- HOTMART API INTEGRATION END ---
 
 // Hotmart Authorization Check
 app.get('/api/hotmart/check-auth', async (req, res) => {

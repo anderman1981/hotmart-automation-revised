@@ -197,9 +197,9 @@ const DetectorAgent = {
                         );
                         
                         if (existsResult.rows.length === 0) {
-                            // Generate proper Hotmart URLs
-                            const salesUrl = generateSalesUrl(product.hotmart_id);
-                            const affiliateUrl = generateAffiliateUrl(product.hotmart_id);
+                            // Generate proper Hotmart URLs using API
+                            const salesUrl = await generateSalesUrl(product.hotmart_id);
+                            const affiliateUrl = await generateAffiliateUrl(product.hotmart_id);
                             
                             // Insert new product
                             await pool.query(`
